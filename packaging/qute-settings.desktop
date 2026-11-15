@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Qute Agent Settings
+Comment=Configure the Qute Agent desktop assistant
+Exec=qute-settings
+Icon=preferences-desktop
+Categories=Settings;Utility;
+Terminal=false

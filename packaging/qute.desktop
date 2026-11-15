@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Qute Agent
+Comment=Toggle the Qute Agent desktop assistant
+Exec=qute toggle
+Icon=utilities-terminal
+Categories=Utility;Development;
+Terminal=false

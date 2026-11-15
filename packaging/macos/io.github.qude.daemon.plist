@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Autostart the Qute Agent daemon at login.
+     cp this file to ~/Library/LaunchAgents/ , fix the path below, then:
+       launchctl load ~/Library/LaunchAgents/io.github.qute.daemon.plist -->
+<plist version="1.0">
+<dict>
+    <key>Label</key><string>io.github.qute.daemon</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Applications/qute.app/Contents/MacOS/qute</string>
+        <string>--daemon</string>
+    </array>
+    <key>RunAtLoad</key><true/>
+    <key>KeepAlive</key><false/>
+</dict>
+</plist>

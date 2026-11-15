@@ -1,0 +1,19 @@
+{
+  "id": "qute",
+  "name": "Qute Agent",
+  "author": "Qute Agent project",
+  "version": 1,
+  "frame": { "width": 256, "height": 256 },
+  "variants": ["ocean", "mint", "grape", "rose", "amber"],
+  "states": {
+    "idle":     { "file": "{variant}/idle.png",     "frames": 6, "fps": 6 },
+    "thinking": { "file": "{variant}/thinking.png", "frames": 6, "fps": 8 },
+    "done":     { "file": "{variant}/done.png",     "frames": 6, "fps": 8 }
+  },
+  "fallback": {
+    "working": "thinking",
+    "waiting": "thinking",
+    "error": "idle",
+    "offline": "idle"
+  }
+}
