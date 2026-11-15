@@ -26,4 +26,4 @@ KDE: System Settings → Keyboard → Shortcuts → Add Command. macOS: Shortcut
 `docs/MACOS.md` · `docs/SETUP_WIZARD.md` · `docs/ARCHITECTURE.md` · `docs/OPENCODE.md` · `docs/SPRITE_PACK.md` · `docs/PLATFORMS.md` · `docs/ROADMAP.md` · `AGENTS.md`
 
 ## Status
-M2 passed: `qute --daemon` runs; `qute toggle` reuses the same instance (1 process after 5 toggles, no second process); `qute quit` stops it. Window shows/hides correctly on Wayland via `spectacle`. Next is M3 (cursor placement) in docs/ROADMAP.md.
+M3 passed: `qute toggle` opens the sprite+panel right next to the cursor, fully on-screen with room for the tallest size. Verified on Wayland via `spectacle`. Next is M4 (opencode connection) in docs/ROADMAP.md.

@@ -26,6 +26,11 @@ Then test the real thing: install on a clean user (or with `--method`), add Play
 keeps room for the tallest size. Accept: test at all 4 screen corners. If the KWin script path fails, fall back to the
 window-rule approach in docs/PLATFORMS.md.
 
+✅ **DONE** — `qute toggle` opens the sprite+panel right next to the cursor. Fixed the placement script: it now resolves
+the output under the cursor via `workspace.screenAt(cursor)` and clamps to that screen's working area (multi-monitor
+safe), instead of snapping to whatever screen the window currently sat on. Verified on Wayland: window renders near the
+cursor, fully on-screen with room for the tallest size (screenshot). Build green; M0 still 5/5.
+
 **M4 – opencode connection.** With `opencode serve` running (or auto-started), the prompt is sent and the answer
 streams into the panel. Accept: ask "say hi" → text appears incrementally; wrong password shows an error.
 

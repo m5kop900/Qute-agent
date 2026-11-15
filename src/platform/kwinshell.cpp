@@ -13,7 +13,8 @@
 #endif
 
 // KWin 6 scripting API (verified against develop.kde.org/docs/plasma/kwin/api):
-//   workspace.cursorPos, workspace.windowList(), workspace.clientArea(KWin.PlacementArea, window),
+//   workspace.cursorPos, workspace.windowList(), workspace.screenAt(point) -> KWin::Output*,
+//   workspace.clientArea(KWin.PlacementArea, output, desktop) -> QRect (multi-screen aware),
 //   window.frameGeometry (must be assigned as a COMPLETE {x,y,width,height} object), window.keepAbove ...
 // If placement misbehaves, debug with:  journalctl -f QT_CATEGORY=kwin_scripting  (or print() output)
 static const char kPlaceScript[] = R"JS(
@@ -25,8 +26,19 @@ static const char kPlaceScript[] = R"JS(
         if (String(w.caption) !== "qute-overlay")
             continue;
         var g = w.frameGeometry;
-        var area = workspace.clientArea(KWin.PlacementArea, w);
         var maxH = Math.max(%MAXH%, g.height);
+
+        // Multi-monitor: anchor to the screen that actually holds the cursor, then clamp
+        // the window to that screen's working area. Resolving the area from the window
+        // (the old approach) snaps it back to whatever screen it currently sits on, so a
+        // toggle while the cursor is on another monitor would fail to follow the cursor.
+        var out = workspace.screenAt(cur);
+        var area;
+        if (out)
+            area = workspace.clientArea(KWin.PlacementArea, out, workspace.currentDesktopForScreen(out));
+        else
+            area = workspace.virtualScreenGeometry;   // cursor outside every output
+
         var x = Math.round(cur.x - 20);
         var y = Math.round(cur.y - 20);
         x = Math.max(area.x, Math.min(x, area.x + area.width - g.width));
