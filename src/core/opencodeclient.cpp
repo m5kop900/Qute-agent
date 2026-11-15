@@ -63,6 +63,12 @@ void OpenCodeClient::start()
 }
 
 // ---- API generation detection -------------------------------------------------------------------------
+static bool authFailed(QNetworkReply *r)
+{
+    const int st = r->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    return st == 401 || st == 403;
+}
+
 void OpenCodeClient::checkHealth()
 {
     QNetworkReply *r = m_nam->get(makeRequest(QStringLiteral("/global/health"), false));
@@ -70,6 +76,10 @@ void OpenCodeClient::checkHealth()
         r->deleteLater();
         if (r->error() == QNetworkReply::NoError) {
             apiDecided(QJsonDocument::fromJson(r->readAll()).object().value("version").toString());
+            return;
+        }
+        if (authFailed(r)) {
+            authError();
             return;
         }
         probeV2Info();                                   // maybe a V2-only server
@@ -81,6 +91,10 @@ void OpenCodeClient::probeV2Info()
     QNetworkReply *r = m_nam->get(makeRequest(QStringLiteral("/api/info"), false));
     connect(r, &QNetworkReply::finished, this, [this, r] {
         r->deleteLater();
+        if (authFailed(r)) {
+            authError();
+            return;
+        }
         if (r->error() == QNetworkReply::NoError) {
             const QString forced = m_config->apiFlavor();
             m_api = (forced == QLatin1String("v1")) ? Api::V1 : Api::V2;
@@ -105,9 +119,22 @@ void OpenCodeClient::apiDecided(const QString &version)
     QNetworkReply *r = m_nam->get(makeRequest(QStringLiteral("/api/info"), false));
     connect(r, &QNetworkReply::finished, this, [this, r] {
         r->deleteLater();
+        if (authFailed(r)) {
+            authError();
+            return;
+        }
         m_api = (r->error() == QNetworkReply::NoError) ? Api::V2 : Api::V1;
         ensureSession();
     });
+}
+
+// A wrong/absent password is a user-fixable configuration problem: say so instead of retrying silently.
+void OpenCodeClient::authError()
+{
+    setConnected(false);
+    setError(tr("opencode rejected the password. Check the server password in settings "
+                "(OPENCODE_SERVER_PASSWORD) and restart the overlay."));
+    m_retry.start(4000);
 }
 
 void OpenCodeClient::notRunning()
@@ -293,6 +320,20 @@ void OpenCodeClient::handleBusEvent(const QString &type, const QJsonObject &p)
             m_partText[id] += p.value("delta").toString();
             rebuildResponse();
         }
+    } else if (type == QLatin1String("session.text.started") || type == QLatin1String("session.text.delta")
+               || type == QLatin1String("session.text.ended")) {
+        // V2 streams the answer per text block: {assistantMessageID, ordinal, delta|text}
+        // (verified against opencode 2.2.6 - V2 does NOT emit message.part.* events).
+        const QString msgId = p.value("assistantMessageID").toString();
+        const QString key = msgId + QLatin1Char('#') + QString::number(p.value("ordinal").toInt());
+        if (!m_partOrder.contains(key)) m_partOrder << key;
+        m_roles.insert(msgId, QStringLiteral("assistant"));
+        m_partMessage.insert(key, msgId);
+        if (type == QLatin1String("session.text.delta"))
+            m_partText[key] += p.value("delta").toString();
+        else if (type == QLatin1String("session.text.ended"))
+            m_partText.insert(key, p.value("text").toString());   // authoritative full block
+        rebuildResponse();
     }
     emit serverEvent(type, p);
 
@@ -489,8 +530,9 @@ void OpenCodeClient::sendPrompt(const QString &text)
     emit promptSent();
 
     if (isV2()) {
-        // Body shape: {"prompt":{"text":...}} per the V2 contract; some builds accept the flat {"text":...} form.
-        postPrompt(QJsonObject{{"prompt", QJsonObject{{"text", text}}}}, QJsonObject{{"text", text}});
+        // Body shape (verified against opencode 2.2.6 /openapi.json): flat {"text":...}; the schema has
+        // additionalProperties:false, so {"prompt":{...}} is rejected with 400. Older builds used the nested form.
+        postPrompt(QJsonObject{{"text", text}}, QJsonObject{{"prompt", QJsonObject{{"text", text}}}});
     } else {
         QJsonObject body{{"parts", QJsonArray{QJsonObject{{"type", "text"}, {"text", text}}}}};
         if (!m_config->modelProvider().isEmpty() && !m_config->modelId().isEmpty())

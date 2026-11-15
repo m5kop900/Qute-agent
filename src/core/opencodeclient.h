@@ -70,6 +70,7 @@ private:
     void probeV2Info();
     void apiDecided(const QString &version);
     void notRunning();
+    void authError();
     void ensureSession();
     void openEventStream();
     void onEventData();
