@@ -14,6 +14,10 @@ the desktop, no black/white background), sprite animates (6 frames/state across 
 **M2 – Command + daemon.** `qute --daemon`, then `qute toggle` shows/hides the same instance (no second process).
 `qute quit` stops it. Accept: `pgrep qute` shows exactly one process after 5 toggles.
 
+✅ **DONE** — verified on Wayland. `qute --daemon` starts 1 process; 5× `qute toggle` keep it at exactly 1 (each toggle
+forwards to the daemon, no second process spawned); `qute quit` brings it to 0. Window shows on toggle #1 (sprite +
+panel visible) and hides on toggle #2 (confirmed via `spectacle`). IPC (`QLocalSocket`) path intact.
+
 **M2b – Setup wizard** (docs/SETUP_WIZARD.md). `qute opencode doctor` runs; `qute opencode setup --dry-run -y --mcp recommended
 --base-url http://127.0.0.1:8080/v1 --models test` prints valid JSON; the unit tests `tst_jsonc` and `tst_opencodeconfig` pass.
 Then test the real thing: install on a clean user (or with `--method`), add Playwright + Context7, run `opencode mcp list`.

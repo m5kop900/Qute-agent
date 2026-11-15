@@ -26,4 +26,4 @@ KDE: System Settings → Keyboard → Shortcuts → Add Command. macOS: Shortcut
 `docs/MACOS.md` · `docs/SETUP_WIZARD.md` · `docs/ARCHITECTURE.md` · `docs/OPENCODE.md` · `docs/SPRITE_PACK.md` · `docs/PLATFORMS.md` · `docs/ROADMAP.md` · `AGENTS.md`
 
 ## Status
-M1 passed: `qute` renders a transparent frameless window with the animated sprite and prompt box, no black/white background, and Esc hides it. Verified on Wayland via `spectacle`. Next is M2 (daemon + `toggle`) in docs/ROADMAP.md.
+M2 passed: `qute --daemon` runs; `qute toggle` reuses the same instance (1 process after 5 toggles, no second process); `qute quit` stops it. Window shows/hides correctly on Wayland via `spectacle`. Next is M3 (cursor placement) in docs/ROADMAP.md.
