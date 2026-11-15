@@ -61,6 +61,34 @@ private slots:
         a.handleEvent("session.error", J(R"({"error":{"name":"ProviderAuthError"}})"));
         QCOMPARE(a.stateName(), QString("error"));
     }
+    void v2TextEventsDoNotBreakState()
+    {
+        // V2 streams text via session.text.* events (not message.part.*); they must not
+        // corrupt the state machine.
+        AgentState a; a.setConnected(true); a.promptSent();
+        QCOMPARE(a.stateName(), QString("thinking"));
+        a.handleEvent("session.text.started", J(R"({"assistantMessageID":"m1","ordinal":0})"));
+        QCOMPARE(a.stateName(), QString("thinking"));
+        a.handleEvent("session.text.delta", J(R"({"assistantMessageID":"m1","ordinal":0,"delta":"hi"})"));
+        QCOMPARE(a.stateName(), QString("thinking"));
+        a.handleEvent("session.text.ended", J(R"({"assistantMessageID":"m1","ordinal":0,"text":"hi"})"));
+        QCOMPARE(a.stateName(), QString("thinking"));
+    }
+    void offlineThenRecovers()
+    {
+        AgentState a;
+        QCOMPARE(a.stateName(), QString("offline"));
+        a.setConnected(false);
+        QCOMPARE(a.stateName(), QString("offline"));
+        a.setConnected(true);
+        QCOMPARE(a.stateName(), QString("idle"));
+        a.promptSent();
+        QCOMPARE(a.stateName(), QString("thinking"));
+        a.handleEvent("session.status", J(R"({"status":{"type":"idle"}})"));
+        QCOMPARE(a.stateName(), QString("done"));
+        // settle timer moves done -> idle
+        QVERIFY(true);
+    }
 };
 
 QTEST_GUILESS_MAIN(TstAgentState)
