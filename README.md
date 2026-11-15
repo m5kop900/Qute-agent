@@ -1,4 +1,4 @@
-# Qute Agent (working name)
+# Qute Agent
 
 A tiny animated desktop companion for [opencode](https://opencode.ai). Press a shortcut → a sprite
 appears next to your cursor with a prompt box; the sprite reacts to what the agent is doing.
@@ -26,4 +26,4 @@ KDE: System Settings → Keyboard → Shortcuts → Add Command. macOS: Shortcut
 `docs/MACOS.md` · `docs/SETUP_WIZARD.md` · `docs/ARCHITECTURE.md` · `docs/OPENCODE.md` · `docs/SPRITE_PACK.md` · `docs/PLATFORMS.md` · `docs/ROADMAP.md` · `AGENTS.md`
 
 ## Status
-M0 passed: `cmake` configures, both binaries link, `ctest` is 5/5 (including SseParser and AgentState). Next is M1 in docs/ROADMAP.md.
+M1 passed: `qute` renders a transparent frameless window with the animated sprite and prompt box, no black/white background, and Esc hides it. Verified on Wayland via `spectacle`. Next is M2 (daemon + `toggle`) in docs/ROADMAP.md.

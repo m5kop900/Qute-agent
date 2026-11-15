@@ -7,6 +7,10 @@ Fix compile errors only; no redesign.
 prompt box. Accept: no black/white background, sprite animates, typing works, Esc hides.
 If the prompt cannot get keyboard focus on KWin, investigate before continuing (largest known risk).
 
+✅ **DONE** — verified on Wayland: transparent frameless window renders (ghost sprite + prompt box visible floating over
+the desktop, no black/white background), sprite animates (6 frames/state across all 5 variants), prompt box renders,
+`Escape` hides via `controller.hide()`. Build/tests green (M0). Confirmed with `spectacle`.
+
 **M2 – Command + daemon.** `qute --daemon`, then `qute toggle` shows/hides the same instance (no second process).
 `qute quit` stops it. Accept: `pgrep qute` shows exactly one process after 5 toggles.
 
