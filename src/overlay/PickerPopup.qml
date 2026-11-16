@@ -14,9 +14,11 @@ Popup {
     property string emptyText: qsTr("Nothing available")
     signal picked(string key)
 
-    // Vertical position is set by the opener (a dropdown dropping below its control).
+    // Set by the opener: the popup edge that touches the control, and the side it opens to.
+    property real anchorEdge: 0
+    property bool opensAbove: false
     x: 0
-    y: 0
+    y: opensAbove ? anchorEdge - height : anchorEdge
     width: Math.round(300 * s)
     padding: 0
     modal: false
@@ -26,7 +28,7 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
     opacity: 0
     // Reveal drops down from the top edge of the control.
-    transformOrigin: Item.Top
+    transformOrigin: opensAbove ? Item.Bottom : Item.Top
     scale: 0.92
     Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
 

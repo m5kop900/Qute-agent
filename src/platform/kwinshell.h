@@ -14,5 +14,5 @@ public:
     void showAtCursor(QQuickWindow *window, bool atCursor) override;
 
 private:
-    void runPlacementScript(int maxHeight);
+    void runPlacementScript(int maxHeight, int anchorY);
 };

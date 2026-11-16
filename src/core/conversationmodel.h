@@ -59,7 +59,8 @@ public:
     // Replace the timeline with the server's projected messages, oldest first.
     // Pending permission/form requests are preserved because the projection does not contain them.
     void applyMessages(const QJsonArray &messagesAscending);
-    void clear();
+    Q_INVOKABLE void clear();
+    Q_INVOKABLE void addNotice(const QString &text);   // local feedback (slash commands, errors)
 
 signals:
     void countChanged();
@@ -75,6 +76,10 @@ private:
     static QString textOfParts(const QJsonArray &parts);
     static QString statusOfTool(const QJsonObject &part);
     static QString summarizeInput(const QJsonValue &input, const QString &fallback);
+    // Full tool input/output as readable text (shown when the user opens a tool card).
+    static QString toolDetailText(const QJsonValue &input, const QJsonValue &output, const QString &error = {});
+    static QJsonValue toolInputOf(const QJsonObject &part);
+    static QJsonValue toolOutputOf(const QJsonObject &part);
 
     QList<Item> m_items;
     int m_userPromptSeq = 0;

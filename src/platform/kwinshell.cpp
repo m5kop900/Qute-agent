@@ -40,7 +40,9 @@ static const char kPlaceScript[] = R"JS(
             area = workspace.virtualScreenGeometry;   // cursor outside every output
 
         var x = Math.round(cur.x - 20);
-        var y = Math.round(cur.y - 20);
+        // The prompt box (the panel's bottom edge, at window y = %ANCHOR%) sits just below the cursor and the
+        // panel grows upward from it, so the prompt never moves when a reply appears.
+        var y = Math.round(cur.y + 20 - %ANCHOR%);
         x = Math.max(area.x, Math.min(x, area.x + area.width - g.width));
         y = Math.max(area.y, Math.min(y, area.y + area.height - maxH));
         w.frameGeometry = { x: x, y: y, width: g.width, height: g.height };
@@ -66,21 +68,23 @@ void KWinShell::showAtCursor(QQuickWindow *window, bool atCursor)
     window->requestActivate();
 #ifdef QUTE_HAVE_DBUS
     const int maxH = qMax(window->property("maxHeight").toInt(), window->height());
+    const int anchorY = window->property("anchorY").toInt();
     // KWin must have mapped the window (with its real size) before the script can move it.
-    QTimer::singleShot(80, this, [this, maxH, atCursor] {
+    QTimer::singleShot(80, this, [this, maxH, anchorY, atCursor] {
         if (atCursor)
-            runPlacementScript(maxH);
+            runPlacementScript(maxH, anchorY);
     });
 #else
     Q_UNUSED(atCursor)
 #endif
 }
 
-void KWinShell::runPlacementScript(int maxHeight)
+void KWinShell::runPlacementScript(int maxHeight, int anchorY)
 {
 #ifdef QUTE_HAVE_DBUS
     QString js = QString::fromUtf8(kPlaceScript);
     js.replace(QStringLiteral("%MAXH%"), QString::number(maxHeight));
+    js.replace(QStringLiteral("%ANCHOR%"), QString::number(anchorY));
 
     const QString path = QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation))
                              .filePath(QStringLiteral("qute-kwin-place.js"));
@@ -114,5 +118,6 @@ void KWinShell::runPlacementScript(int maxHeight)
     });
 #else
     Q_UNUSED(maxHeight)
+    Q_UNUSED(anchorY)
 #endif
 }

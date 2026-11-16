@@ -1,5 +1,10 @@
 #include "overlaycontroller.h"
 
+#include <QDir>
+#include <QFileInfo>
+#include <QRegularExpression>
+#include <QStandardPaths>
+
 #include "appconfig.h"
 #include "platformshell.h"
 #include "terminallauncher.h"
@@ -81,4 +86,35 @@ void OverlayController::runSettings()
     hide();
     if (!launchSettingsApp())
         qWarning("qute: could not start qute-settings");
+}
+
+QString OverlayController::setWorkDirectory(const QString &path)
+{
+    QString p = path.trimmed();
+    if (p == QLatin1String("~") || p.startsWith(QLatin1String("~/")))
+        p = QDir::homePath() + p.mid(1);
+    const QFileInfo fi(p);
+    if (p.isEmpty() || !fi.exists() || !fi.isDir())
+        return tr("Directory not found: %1").arg(path.trimmed());
+    m_config->setWorkDir(fi.canonicalFilePath());
+    if (!m_config->save())
+        return tr("Could not save the working directory to the settings file.");
+    return QString();
+}
+
+QString OverlayController::openInOpencode(const QString &sessionId, const QString &directory)
+{
+    // Session ids come from the server; anything else must never reach a command line.
+    static const QRegularExpression idPattern(QStringLiteral("^[A-Za-z0-9_-]+$"));
+    if (!idPattern.match(sessionId).hasMatch())
+        return tr("There is no active session to open in opencode yet.");
+    const QString dir = directory.isEmpty() ? m_config->workDir() : directory;
+    if (dir.isEmpty() || !QFileInfo(dir).isDir())
+        return tr("Working directory of this session not found: %1").arg(dir);
+    if (QStandardPaths::findExecutable(QStringLiteral("opencode")).isEmpty())
+        return tr("The opencode CLI was not found. Install it, or run `qute opencode install`.");
+    // The real TUI, attached to this exact session, started in the session's directory. No shell string is built.
+    if (!TerminalLauncher::launch(QStringLiteral("opencode"), {QStringLiteral("--session"), sessionId}, dir))
+        return tr("No terminal emulator was found to open opencode in.");
+    return QString();
 }

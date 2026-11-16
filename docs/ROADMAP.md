@@ -236,6 +236,10 @@ Depends on: F0.1, F0.3. **Audit:** one `Text` with the last answer.
 Depends on: F0.1 (session id/workDir), F1.4 (slash popup; a temporary toolbar button is allowed earlier). **Audit:** `TerminalLauncher` exists without cwd; session id is known in `OpenCodeClient`.
 
 ### F4.1 `/openinopencode`
+> **Status:** implemented (unverified live): `OverlayController::openInOpencode` + `TerminalLauncher::launch(program, args, workDir)`
+> with per-terminal working-directory flags; argv list only, session id validated. `/directory <path>` (see below) also exists.
+> Open items: the V2 CLI flag `--session` is taken from V1 and still needs `opencode --help` verification; the directory used is the
+> config's working directory (the session's original directory is not yet stored at creation); live check still required.
 - [ ] Local slash command. Gets the active session id and the session's **original working directory** (from the session info: V2 `Session.Info.location.directory` **(verify)**; fallback: the directory sent at session creation).
 - [ ] Launches the user's terminal and runs the real OpenCode TUI **attached to that exact session**: conceptually `cd "<dir>" && opencode --session "<id>"` (**verify** the V2 CLI flag with `opencode --help`; V1 has `-s/--session`).
 - [ ] Does NOT: create a new session, fork, only open the project, show the home screen, or export/import the conversation.

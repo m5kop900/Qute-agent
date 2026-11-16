@@ -12,6 +12,7 @@ Item {
     property bool enabled: true
     property string offText: qsTr("Connecting to opencode…")
     signal submitted(string text)
+    signal command(string text)      // a line starting with "/" (local slash command)
 
     readonly property bool hasText: input.text.trim().length > 0
     readonly property bool engaged: input.activeFocus
@@ -33,7 +34,10 @@ Item {
         if (text.length === 0)
             return
         input.text = ""
-        root.submitted(text)
+        if (text.charAt(0) === "/")
+            root.command(text)
+        else
+            root.submitted(text)
     }
 
     Rectangle {

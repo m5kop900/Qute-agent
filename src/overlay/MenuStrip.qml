@@ -18,10 +18,11 @@ Item {
 
     readonly property bool popupOpen: modePopup.visible || modelPopup.visible || effortPopup.visible
     // Bottom edge of the open dropdown in this strip's coordinates; Main uses it to size the window.
-    readonly property real openPopupBottom: modePopup.visible ? modePopup.y + modePopup.height
-                                          : modelPopup.visible ? modelPopup.y + modelPopup.height
-                                          : effortPopup.visible ? effortPopup.y + effortPopup.height
-                                          : 0
+    readonly property var openPopup: modePopup.visible ? modePopup
+                                   : modelPopup.visible ? modelPopup
+                                   : effortPopup.visible ? effortPopup : null
+    readonly property real openPopupTop: openPopup ? openPopup.y : 0
+    readonly property real openPopupBottom: openPopup ? openPopup.y + openPopup.height : 0
 
     // --- live selection state ---
     readonly property bool hasModel: sessionStore && sessionStore.activeModelId !== ""
@@ -134,12 +135,24 @@ Item {
         const p = chip.mapToItem(root, 0, 0)
         popup.x = Math.max(Math.round(2 * s),
                            Math.min(p.x, root.width - popup.width - Math.round(2 * s)))
-        // Drop just below the chip so the menu appears to fall from the strip.
-        popup.y = p.y + chip.height - Math.round(3 * s)
+        // The window is a fixed size and clips anything outside it, so the dropdown opens toward the side
+        // that has more room (below the strip normally; above it when the strip sits low in the window).
+        const gap = Math.round(3 * s)
+        const margin = Math.round(10 * s)
+        const chrome = Math.round(90 * s)        // title, search field, paddings: everything but the list
+        const minList = Math.round(96 * s)
+        const stripY = root.mapToItem(root.Window.contentItem, 0, 0).y
+        const belowEdge = stripY + p.y + chip.height - gap
+        const aboveEdge = stripY + p.y + gap
+        const roomBelow = root.Window.height - belowEdge - margin
+        const roomAbove = aboveEdge - margin
+        const opensAbove = roomBelow < minList + chrome && roomAbove > roomBelow
+        popup.opensAbove = opensAbove
+        popup.anchorEdge = opensAbove ? p.y + gap : p.y + chip.height - gap
         popup.scale = 0.92
         popup.opacity = 0
-        // Long lists scroll inside a fixed height; Main grows the window to fit the whole dropdown.
-        popup.listMaxHeight = Math.round(240 * s)
+        // Long lists scroll inside whatever room there is; the list never grows past the window.
+        popup.listMaxHeight = Math.max(minList, Math.floor((opensAbove ? roomAbove : roomBelow) - chrome))
         popup.open()
     }
 

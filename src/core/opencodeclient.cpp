@@ -48,8 +48,11 @@ QNetworkRequest OpenCodeClient::makeRequest(const QString &path, bool perDirecto
     QNetworkRequest req(url);
     req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
     if (!m_config->serverPassword().isEmpty()) {
-        // V2: the username is always "opencode" (OPENCODE_SERVER_USERNAME was removed)
-        const QString user = isV2() ? QStringLiteral("opencode") : m_config->serverUsername();
+        // The username is "opencode" on OpenCode 2 (OPENCODE_SERVER_USERNAME was removed). It is only taken from
+        // settings when the V1 flavor is forced: before the API version is known it must not be sent, or the
+        // very first health check fails with a correct password.
+        const QString user = (m_config->apiFlavor() == QLatin1String("v1")) ? m_config->serverUsername()
+                                                                              : QStringLiteral("opencode");
         req.setRawHeader("Authorization", "Basic " + (user + QLatin1Char(':') + m_config->serverPassword()).toUtf8().toBase64());
     }
     return req;
@@ -133,8 +136,13 @@ void OpenCodeClient::apiDecided(const QString &version)
 void OpenCodeClient::authError()
 {
     setConnected(false);
-    setError(tr("opencode rejected the password. Check the server password in settings "
-                "(OPENCODE_SERVER_PASSWORD) and restart the overlay."));
+    if (m_config->serverPassword().isEmpty())
+        setError(tr("This opencode server requires a password. Enter it in qute settings (Server password)."));
+    else if (m_server)
+        setError(tr("The server started by qute rejected the configured password. Check the server password in settings."));
+    else
+        setError(tr("opencode rejected the password. The server on this address uses a different password, "
+                    "or another opencode instance is running on it. Fix the password in settings, or stop the other server."));
     m_retry.start(4000);
 }
 

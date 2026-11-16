@@ -209,16 +209,18 @@ ListView {
             }
         }
 
-        // ---- tool call: one compact card ----
+        // ---- tool call: compact card; click it to show the full input and output ----
         DelegateChoice {
             roleValue: "tool"
             Rectangle {
+                id: toolCard
                 width: ListView.view.width
                 implicitHeight: toolCol.implicitHeight + Math.round(12 * view.s)
                 radius: Math.round(9 * view.s)
                 color: Qt.rgba(view.theme.text.r, view.theme.text.g, view.theme.text.b, 0.04)
                 border.width: 1
                 border.color: view.theme.border
+                property bool open: false
 
                 Column {
                     id: toolCol
@@ -228,29 +230,81 @@ ListView {
                     anchors.margins: Math.round(8 * view.s)
                     spacing: Math.round(2 * view.s)
 
-                    Row {
-                        spacing: Math.round(6 * view.s)
-                        Label {
-                            text: model.name !== "" ? model.name : qsTr("tool")
-                            font.pixelSize: Math.round(11 * view.s)
-                            font.bold: true
-                            color: view.theme.accent
+                    Item {                        // header: clicking it toggles the full view
+                        id: toolHead
+                        width: parent.width
+                        height: toolNameRow.implicitHeight
+                        visible: model.text !== "" || model.detail !== ""
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        TapHandler {
+                            enabled: model.text !== ""
+                            onTapped: toolCard.open = !toolCard.open
                         }
-                        Label {
-                            text: model.status
-                            font.pixelSize: Math.round(9.5 * view.s)
-                            color: model.status === "error" ? "#e5484d"
-                                 : model.status === "running" ? view.theme.accent
-                                 : view.theme.textDim
+
+                        Row {
+                            id: toolNameRow
+                            spacing: Math.round(6 * view.s)
+                            Label {
+                                text: model.name !== "" ? model.name : qsTr("tool")
+                                font.pixelSize: Math.round(11 * view.s)
+                                font.bold: true
+                                color: view.theme.accent
+                            }
+                            Label {
+                                text: model.status
+                                font.pixelSize: Math.round(9.5 * view.s)
+                                color: model.status === "error" ? "#e5484d"
+                                     : model.status === "running" ? view.theme.accent
+                                     : view.theme.textDim
+                            }
+                            Label {
+                                visible: model.text !== ""
+                                text: toolCard.open ? "▾" : "▸"
+                                font.pixelSize: Math.round(10 * view.s)
+                                color: view.theme.textDim
+                            }
                         }
                     }
                     Label {
                         width: parent.width
-                        visible: model.detail !== ""
+                        visible: model.detail !== "" && !toolCard.open
                         text: model.detail
                         elide: Text.ElideRight
                         font.pixelSize: Math.round(10 * view.s)
                         color: view.theme.textDim
+                    }
+                    Rectangle {                   // full input / output, capped in height and scrollable
+                        visible: toolCard.open
+                        width: parent.width
+                        height: visible ? Math.min(toolFull.implicitHeight, Math.round(260 * view.s)) + Math.round(12 * view.s) : 0
+                        radius: Math.round(7 * view.s)
+                        color: Qt.rgba(view.theme.text.r, view.theme.text.g, view.theme.text.b, 0.05)
+                        border.width: 1
+                        border.color: view.theme.border
+                        clip: true
+
+                        Flickable {
+                            anchors.fill: parent
+                            anchors.margins: Math.round(6 * view.s)
+                            contentWidth: width
+                            contentHeight: toolFull.implicitHeight
+                            clip: true
+                            boundsBehavior: Flickable.StopAtBounds
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                            TextEdit {
+                                id: toolFull
+                                width: parent.width - Math.round(8 * view.s)
+                                text: model.text
+                                readOnly: true
+                                selectByMouse: true
+                                wrapMode: TextEdit.Wrap
+                                textFormat: TextEdit.PlainText
+                                font.family: "monospace"
+                                font.pixelSize: Math.round(10.5 * view.s)
+                                color: view.theme.text
+                            }
+                        }
                     }
                 }
             }

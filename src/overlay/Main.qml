@@ -26,6 +26,9 @@ Window {
     readonly property var panelHeights: [140, 250, 430]
     readonly property var windowHeights: [190, 350, 530]
     readonly property int maxHeight: Math.round(windowHeights[2] * s)   // read by the C++ platform shell
+    // The panel's bottom edge (the prompt box) is fixed at this y in window coordinates. Taller levels grow
+    // UPWARD from it, so the prompt never jumps when a reply appears. Read by the C++ platform shell.
+    readonly property real anchorY: Math.round(10 * s) + Math.round(panelHeights[2] * s)
 
     width: Math.round(560 * s)
     height: maxHeight
@@ -34,19 +37,23 @@ Window {
 
     // Input region: everything below the visible panel or dropdown is transparent to the mouse.
     function updateInputRegion() {
-        const panelBottom = Math.round(10 * win.s) + Math.round(win.panelHeights[win.desiredLevel] * win.s)
-        let bottom = panelBottom
+        let top = win.anchorY - Math.round(win.panelHeights[win.desiredLevel] * win.s)
+        let bottom = win.anchorY
         if (menuStrip.popupOpen) {
-            const top = menuStrip.mapToItem(win.contentItem, 0, 0).y
-            bottom = Math.max(bottom, Math.ceil(top + menuStrip.openPopupBottom + Math.round(12 * win.s)))
+            // A dropdown can open above or below the strip: the clickable area covers it either way.
+            const stripY = menuStrip.mapToItem(win.contentItem, 0, 0).y
+            top = Math.min(top, Math.floor(stripY + menuStrip.openPopupTop - Math.round(12 * win.s)))
+            bottom = Math.max(bottom, Math.ceil(stripY + menuStrip.openPopupBottom + Math.round(12 * win.s)))
         }
-        controller.setInputRegion(0, 0, win.width, Math.min(bottom, win.maxHeight))
+        top = Math.max(0, top)
+        controller.setInputRegion(0, top, win.width, Math.min(bottom, win.maxHeight) - top)
     }
     onDesiredLevelChanged: updateInputRegion()
     Connections {
         target: menuStrip
         function onPopupOpenChanged() { win.updateInputRegion() }
         function onOpenPopupBottomChanged() { win.updateInputRegion() }
+        function onOpenPopupTopChanged() { win.updateInputRegion() }
     }
 
     Connections {
@@ -67,13 +74,22 @@ Window {
             id: sprite
             width: Math.round(128 * win.s)
             height: width
+            y: win.anchorY - height     // sits on the same bottom edge as the prompt
             stateName: win.st
+        }
+
+        // Hold the mouse on the sprite and drag: the compositor moves the whole overlay.
+        MouseArea {
+            anchors.fill: sprite
+            acceptedButtons: Qt.LeftButton
+            cursorShape: Qt.OpenHandCursor
+            onPressed: win.startSystemMove()
         }
 
         Rectangle {
             id: panel
             x: sprite.width + Math.round(4 * win.s)
-            y: Math.round(10 * win.s)
+            y: win.anchorY - height     // grows upward; the bottom edge stays put
             width: parent.width - x - Math.round(6 * win.s)
             height: Math.round(win.panelHeights[win.desiredLevel] * win.s)
             radius: Math.round(16 * win.s)
@@ -188,8 +204,39 @@ Window {
                     enabled: client.connected
                     offText: client.lastError !== "" ? qsTr("opencode is not available") : qsTr("Connecting to opencode…")
                     onSubmitted: function (text) { client.sendPrompt(text) }
+                    onCommand: function (text) { win.runCommand(text) }
                 }
             }
+        }
+    }
+
+    // Slash commands typed in the prompt box. They run in Qute, not on the server.
+    function runCommand(line) {
+        const m = /^\/(\S+)\s*(.*)$/.exec(line)
+        const name = m ? m[1] : ""
+        const arg = m ? m[2].trim() : ""
+        if (name === "directory") {
+            if (arg === "") {
+                conversation.addNotice(qsTr("Working directory: %1").arg(config.workDir))
+                return
+            }
+            const err = controller.setWorkDirectory(arg)
+            if (err !== "") {
+                conversation.addNotice(err)
+                return
+            }
+            // A session is bound to its directory, so changing it starts a fresh session there.
+            conversation.clear()
+            client.newSession()
+            conversation.addNotice(qsTr("New session in %1").arg(config.workDir))
+        } else if (name === "openinopencode") {
+            const err = controller.openInOpencode(client.sessionId, store.workDir)
+            if (err !== "")
+                conversation.addNotice(err)
+            else
+                controller.hide()
+        } else {
+            conversation.addNotice(qsTr("Unknown command: /%1").arg(name))
         }
     }
 

@@ -1,6 +1,7 @@
 #include "conversationmodel.h"
 
 #include <QJsonDocument>
+#include <QSet>
 
 static QString firstString(const QJsonObject &o, std::initializer_list<const char *> keys)
 {
@@ -175,6 +176,51 @@ QString ConversationModel::summarizeInput(const QJsonValue &input, const QString
     return text;
 }
 
+QString ConversationModel::toolDetailText(const QJsonValue &input, const QJsonValue &output, const QString &error)
+{
+    auto render = [](const QJsonValue &v) -> QString {
+        if (v.isUndefined() || v.isNull())
+            return {};
+        if (v.isString())
+            return v.toString();
+        if (v.isObject())
+            return QString::fromUtf8(QJsonDocument(v.toObject()).toJson(QJsonDocument::Indented));
+        if (v.isArray())
+            return QString::fromUtf8(QJsonDocument(v.toArray()).toJson(QJsonDocument::Indented));
+        return v.toVariant().toString();
+    };
+    QStringList sections;
+    const QString in = render(input);
+    if (!in.isEmpty())
+        sections << QStringLiteral("Input:\n") + in;
+    const QString out = render(output);
+    if (!out.isEmpty())
+        sections << QStringLiteral("Output:\n") + out;
+    if (!error.isEmpty())
+        sections << QStringLiteral("Error:\n") + error;
+    return sections.join(QStringLiteral("\n\n"));
+}
+
+QJsonValue ConversationModel::toolInputOf(const QJsonObject &part)
+{
+    if (part.contains(QStringLiteral("input")))
+        return part.value(QStringLiteral("input"));
+    return part.value(QStringLiteral("state")).toObject().value(QStringLiteral("input"));
+}
+
+QJsonValue ConversationModel::toolOutputOf(const QJsonObject &part)
+{
+    const QJsonObject state = part.value(QStringLiteral("state")).toObject();
+    if (state.contains(QStringLiteral("output")))
+        return state.value(QStringLiteral("output"));
+    return part.value(QStringLiteral("output"));
+}
+
+void ConversationModel::addNotice(const QString &text)
+{
+    appendNotice(text);
+}
+
 void ConversationModel::applyUserPrompt(const QString &text)
 {
     if (text.isEmpty())
@@ -255,15 +301,23 @@ void ConversationModel::applyEvent(const QString &type, const QJsonObject &p)
         it.kind = QStringLiteral("tool");
         it.id = QStringLiteral("tool:%1").arg(key.isEmpty() ? QStringLiteral("?") : key);
         it.name = firstString(p, {"name", "tool", "toolName"});
+        const QJsonValue input = p.value(QStringLiteral("input"));
+        const QJsonValue output = p.contains(QStringLiteral("output")) ? p.value(QStringLiteral("output"))
+                                                                        : p.value(QStringLiteral("result"));
         if (type == QLatin1String("session.tool.success")) {
             it.status = QStringLiteral("ok");
+            it.text = toolDetailText(input, output);
         } else if (type == QLatin1String("session.tool.failed")) {
             it.status = QStringLiteral("error");
-            it.detail = firstString(p.value("error").toObject(), {"message", "name"});
+            const QJsonValue err = p.value("error");
+            const QString message = err.isString() ? err.toString() : firstString(err.toObject(), {"message", "name"});
+            it.detail = message;
+            it.text = toolDetailText(input, output, message);
         } else {
             it.status = QStringLiteral("running");
             if (p.contains(QStringLiteral("input")))
                 it.detail = summarizeInput(p.value("input"), it.detail);
+            it.text = toolDetailText(input, output);
         }
         upsert(it);
         return;
@@ -378,6 +432,7 @@ void ConversationModel::applyEvent(const QString &type, const QJsonObject &p)
             it.name = firstString(part, {"tool", "name"});
             it.status = statusOfTool(part);
             it.detail = summarizeInput(part.value("state").toObject().value("input"), it.detail);
+            it.text = toolDetailText(toolInputOf(part), toolOutputOf(part));
             upsert(it);
         }
         return;
@@ -417,7 +472,9 @@ void ConversationModel::applyMessages(const QJsonArray &asc)
         const QJsonArray parts = partsOf(message);
 
         if (role == QLatin1String("user")) {
-            const QString text = textOfParts(parts);
+            QString text = textOfParts(parts);
+            if (text.isEmpty() && message.value("content").isString())   // some servers send plain-string content
+                text = message.value("content").toString().trimmed();
             if (!text.isEmpty())
                 out << Item{QStringLiteral("user"), QStringLiteral("user:%1").arg(msgId), text, {}, {}, {}, {}, false};
         } else if (role == QLatin1String("assistant")) {
@@ -445,7 +502,7 @@ void ConversationModel::applyMessages(const QJsonArray &asc)
                                                           summarizeInput(part.value("state").toObject().value("input"), {}));
                     out << Item{QStringLiteral("tool"),
                                 QStringLiteral("tool:%1").arg(toolId.isEmpty() ? key : toolId),
-                                part.value("text").toString(), name, statusOfTool(part), {}, detail, false};
+                                toolDetailText(toolInputOf(part), toolOutputOf(part)), name, statusOfTool(part), {}, detail, false};
                 }
             }
         }

@@ -11,6 +11,7 @@
 
 AppConfig::AppConfig(QObject *parent) : QObject(parent), m_path(defaultPath())
 {
+    m_workDir = QDir::homePath();            // default working directory; a saved value (even empty) overrides it
     load();
 }
 
