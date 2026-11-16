@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Controls
 
-// One popup for the composer pickers (agent / model / effort). It opens above the composer and
-// overlays the conversation; Main.qml grows the overlay while a picker is open.
+// One dropdown for the menu-strip pickers (agent / model / effort): it drops down from its control
+// and overlays the conversation with a top-to-bottom reveal; Main grows the overlay while open.
 Popup {
     id: root
     property var theme
@@ -14,15 +14,25 @@ Popup {
     property string emptyText: qsTr("Nothing available")
     signal picked(string key)
 
-    // Set by the opener; the vertical position follows the measured height.
+    // Vertical position is set by the opener (a dropdown dropping below its control).
     x: 0
-    y: -height - Math.round(8 * s)
+    y: 0
     width: Math.round(300 * s)
     padding: 0
     modal: false
     focus: true
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    // Presses inside the menu strip are not "outside" here: the chip that opened the popup toggles it,
+    // and the other chips switch to their own dropdown (see MenuStrip.openPicker).
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
     opacity: 0
+    // Reveal drops down from the top edge of the control.
+    transformOrigin: Item.Top
+    scale: 0.92
+    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+
+    // Max list pixel height, set by the opener so the whole dropdown fits inside the window
+    // instead of being clipped at its bottom edge. Falls back to a sensible cap.
+    property real listMaxHeight: Math.round(260 * s)
 
     readonly property var filtered: {
         const q = search.text.toLowerCase().trim()
@@ -48,6 +58,7 @@ Popup {
 
     onOpened: {
         opacity = 1
+        scale = 1
         if (searchable)
             search.forceActiveFocus()
         else
@@ -55,9 +66,10 @@ Popup {
     }
     onClosed: {
         opacity = 0
+        scale = 0.92
         search.text = ""
     }
-    Behavior on opacity { NumberAnimation { duration: 110 } }
+    Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
 
     background: Rectangle {
         color: root.theme.input
@@ -122,7 +134,7 @@ Popup {
             id: list
             width: content.width - content.leftPadding - content.rightPadding
             visible: root.filtered.length > 0
-            height: visible ? Math.min(contentHeight, Math.round(192 * root.s)) : 0
+            height: visible ? Math.min(contentHeight, Math.max(Math.round(96 * root.s), root.listMaxHeight)) : 0
             clip: true
             model: root.filtered
             currentIndex: -1

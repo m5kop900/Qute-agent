@@ -8,6 +8,7 @@
 #include <QGuiApplication>
 #include <QProcess>
 #include <QQuickWindow>
+#include <QRegion>
 
 OverlayController::OverlayController(PlatformShell *shell, AppConfig *config, QObject *parent)
     : QObject(parent), m_shell(shell), m_config(config)
@@ -34,6 +35,13 @@ void OverlayController::show()
     m_focusGrace.start();
     emit shown();                                     // QML resizes for the current state BEFORE placement
     m_shell->showAtCursor(m_window, m_config->placeAtCursor());
+}
+
+void OverlayController::setInputRegion(int x, int y, int w, int h)
+{
+    if (!m_window)
+        return;
+    m_window->setMask(w > 0 && h > 0 ? QRegion(x, y, w, h) : QRegion());
 }
 
 void OverlayController::hide()

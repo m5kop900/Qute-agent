@@ -1,79 +1,314 @@
 import QtQuick
 import QtQuick.Controls
+import QtQml.Models
 
-// F0.3 skeleton: the conversation list. Renders the ordered ConversationModel items; the delegate
-// only chooses a look per kind. F3 adds real code blocks, collapsing and message actions.
+// The chat: one bubble per user prompt and per assistant answer, a collapsible reasoning block,
+// compact tool/permission cards and small notices. Newest items are at the bottom; the list follows
+// them while the user is at the bottom and stays put when they scroll up to read.
 ListView {
     id: view
     property var theme
     property real s: 1.0
     property bool stickToBottom: true
+    readonly property string assistantName: store && store.activeModel !== ""
+                                            ? String(store.activeModel).split("/").pop()
+                                            : qsTr("Assistant")
 
     model: conversation
     clip: true
-    spacing: Math.round(8 * s)
+    spacing: Math.round(10 * s)
     boundsBehavior: ListView.StopAtBounds
     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
-    onCountChanged: Qt.callLater(view.positionViewAtEnd)
-    onContentHeightChanged: if (view.stickToBottom) Qt.callLater(view.positionViewAtEnd)
-    onMovementEnded: view.stickToBottom = view.atYEnd
+    onCountChanged: if (stickToBottom) Qt.callLater(view.positionViewAtEnd)
+    onContentHeightChanged: if (stickToBottom) Qt.callLater(view.positionViewAtEnd)
+    onMovementEnded: stickToBottom = atYEnd
 
-    delegate: Item {
-        width: ListView.view.width
-        implicitHeight: body.implicitHeight
+    delegate: DelegateChooser {
+        role: "kind"
 
-        Column {
-            id: body
-            width: parent.width
-            spacing: Math.round(3 * view.s)
+        // ---- user prompt: right-aligned, accent-tinted bubble ----
+        DelegateChoice {
+            roleValue: "user"
+            Item {
+                width: ListView.view.width
+                implicitHeight: userCol.implicitHeight
 
-            Label {
-                width: parent.width
-                visible: model.kind !== "assistant-text"
-                text: model.kind === "user" ? qsTr("You")
-                    : model.kind === "reasoning" ? qsTr("Reasoning")
-                    : model.kind === "tool" ? (model.name !== "" ? model.name : qsTr("tool"))
-                    : model.kind === "request" ? (model.requestKind === "form" ? qsTr("Question") : qsTr("Permission"))
-                    : qsTr("Notice")
-                elide: Text.ElideRight
-                color: model.kind === "user" ? view.theme.text
-                     : model.kind === "tool" || model.kind === "request" ? view.theme.accent
-                     : view.theme.textDim
-                font.pixelSize: Math.round(10 * view.s)
-                font.bold: model.kind === "user"
+                Column {
+                    id: userCol
+                    width: parent.width
+                    spacing: Math.round(3 * view.s)
+
+                    Label {
+                        anchors.right: parent.right
+                        text: qsTr("You")
+                        font.pixelSize: Math.round(9.5 * view.s)
+                        font.bold: true
+                        color: view.theme.textDim
+                    }
+                    Rectangle {
+                        anchors.right: parent.right
+                        width: Math.min(userText.implicitWidth + Math.round(20 * view.s), parent.width * 0.88)
+                        height: userText.implicitHeight + Math.round(16 * view.s)
+                        radius: Math.round(12 * view.s)
+                        color: Qt.rgba(view.theme.accent.r, view.theme.accent.g, view.theme.accent.b, 0.16)
+                        border.width: 1
+                        border.color: Qt.rgba(view.theme.accent.r, view.theme.accent.g, view.theme.accent.b, 0.35)
+
+                        Text {
+                            id: userText
+                            anchors.fill: parent
+                            anchors.margins: Math.round(10 * view.s)
+                            text: model.text
+                            textFormat: Text.PlainText
+                            wrapMode: Text.Wrap
+                            color: view.theme.text
+                            font.pixelSize: Math.round(13 * view.s)
+                        }
+                    }
+                }
             }
+        }
 
-            Text {
-                width: parent.width
-                visible: model.text !== ""
-                text: model.text
-                textFormat: Text.MarkdownText
+        // ---- assistant answer: left-aligned panel bubble with the model name ----
+        DelegateChoice {
+            roleValue: "assistant-text"
+            Item {
+                width: ListView.view.width
+                implicitHeight: asstCol.implicitHeight
+
+                Column {
+                    id: asstCol
+                    width: parent.width
+                    spacing: Math.round(3 * view.s)
+
+                    Label {
+                        text: view.assistantName
+                        font.pixelSize: Math.round(9.5 * view.s)
+                        font.bold: true
+                        color: view.theme.accent
+                    }
+                    Rectangle {
+                        width: parent.width
+                        height: asstText.implicitHeight + Math.round(16 * view.s)
+                        radius: Math.round(12 * view.s)
+                        color: view.theme.input
+                        border.width: 1
+                        border.color: view.theme.border
+
+                        Text {
+                            id: asstText
+                            anchors.fill: parent
+                            anchors.margins: Math.round(10 * view.s)
+                            text: model.text
+                            textFormat: Text.MarkdownText
+                            wrapMode: Text.Wrap
+                            color: view.theme.text
+                            linkColor: view.theme.accent
+                            font.pixelSize: Math.round(13 * view.s)
+                            onLinkActivated: (link) => Qt.openUrlExternally(link)
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---- reasoning: collapsed "Thinking…" / "Reasoned" header, click to show the text ----
+        DelegateChoice {
+            roleValue: "reasoning"
+            Item {
+                id: reason
+                width: ListView.view.width
+                implicitHeight: reasonCol.implicitHeight
+                property bool open: false
+                readonly property bool live: model.streaming === true
+
+                Column {
+                    id: reasonCol
+                    width: parent.width
+                    spacing: Math.round(4 * view.s)
+
+                    Rectangle {
+                        id: header
+                        width: parent.width
+                        height: Math.round(26 * view.s)
+                        radius: Math.round(8 * view.s)
+                        color: headHover.hovered ? Qt.rgba(view.theme.text.r, view.theme.text.g, view.theme.text.b, 0.06)
+                                                 : "transparent"
+
+                        Row {
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            anchors.leftMargin: Math.round(6 * view.s)
+                            spacing: Math.round(6 * view.s)
+
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: Math.round(6 * view.s)
+                                height: width
+                                radius: width / 2
+                                color: view.theme.accent
+                                visible: reason.live
+                                SequentialAnimation on opacity {
+                                    loops: Animation.Infinite
+                                    running: reason.live
+                                    NumberAnimation { to: 0.2; duration: 600; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
+                                }
+                            }
+                            Label {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: reason.live ? qsTr("Thinking…") : qsTr("Reasoning")
+                                font.pixelSize: Math.round(11 * view.s)
+                                font.italic: true
+                                color: reason.live ? view.theme.accent : view.theme.textDim
+                            }
+                            Label {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: reason.open ? "▾" : "▸"
+                                font.pixelSize: Math.round(11 * view.s)
+                                color: view.theme.textDim
+                            }
+                        }
+
+                        HoverHandler { id: headHover; cursorShape: Qt.PointingHandCursor }
+                        TapHandler { onTapped: reason.open = !reason.open }
+                    }
+
+                    Rectangle {
+                        visible: reason.open
+                        width: parent.width
+                        height: visible ? Math.min(reasonText.implicitHeight, Math.round(160 * view.s)) + Math.round(14 * view.s) : 0
+                        radius: Math.round(10 * view.s)
+                        color: Qt.rgba(view.theme.text.r, view.theme.text.g, view.theme.text.b, 0.04)
+                        border.width: 1
+                        border.color: view.theme.border
+                        clip: true
+
+                        Flickable {
+                            anchors.fill: parent
+                            anchors.margins: Math.round(7 * view.s)
+                            contentHeight: reasonText.implicitHeight
+                            clip: true
+                            boundsBehavior: Flickable.StopAtBounds
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                            Text {
+                                id: reasonText
+                                width: parent.width - Math.round(8 * view.s)
+                                text: model.text
+                                textFormat: Text.MarkdownText
+                                wrapMode: Text.Wrap
+                                color: view.theme.textDim
+                                font.italic: true
+                                font.pixelSize: Math.round(11.5 * view.s)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---- tool call: one compact card ----
+        DelegateChoice {
+            roleValue: "tool"
+            Rectangle {
+                width: ListView.view.width
+                implicitHeight: toolCol.implicitHeight + Math.round(12 * view.s)
+                radius: Math.round(9 * view.s)
+                color: Qt.rgba(view.theme.text.r, view.theme.text.g, view.theme.text.b, 0.04)
+                border.width: 1
+                border.color: view.theme.border
+
+                Column {
+                    id: toolCol
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: Math.round(8 * view.s)
+                    spacing: Math.round(2 * view.s)
+
+                    Row {
+                        spacing: Math.round(6 * view.s)
+                        Label {
+                            text: model.name !== "" ? model.name : qsTr("tool")
+                            font.pixelSize: Math.round(11 * view.s)
+                            font.bold: true
+                            color: view.theme.accent
+                        }
+                        Label {
+                            text: model.status
+                            font.pixelSize: Math.round(9.5 * view.s)
+                            color: model.status === "error" ? "#e5484d"
+                                 : model.status === "running" ? view.theme.accent
+                                 : view.theme.textDim
+                        }
+                    }
+                    Label {
+                        width: parent.width
+                        visible: model.detail !== ""
+                        text: model.detail
+                        elide: Text.ElideRight
+                        font.pixelSize: Math.round(10 * view.s)
+                        color: view.theme.textDim
+                    }
+                }
+            }
+        }
+
+        // ---- permission / question request ----
+        DelegateChoice {
+            roleValue: "request"
+            Rectangle {
+                width: ListView.view.width
+                implicitHeight: reqCol.implicitHeight + Math.round(12 * view.s)
+                radius: Math.round(9 * view.s)
+                color: Qt.rgba(view.theme.accent.r, view.theme.accent.g, view.theme.accent.b, 0.08)
+                border.width: 1
+                border.color: Qt.rgba(view.theme.accent.r, view.theme.accent.g, view.theme.accent.b, 0.35)
+
+                Column {
+                    id: reqCol
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: Math.round(8 * view.s)
+                    spacing: Math.round(2 * view.s)
+
+                    Label {
+                        text: model.requestKind === "form" ? qsTr("Question") : qsTr("Permission")
+                        font.pixelSize: Math.round(11 * view.s)
+                        font.bold: true
+                        color: view.theme.accent
+                    }
+                    Label {
+                        width: parent.width
+                        visible: model.text !== ""
+                        text: model.text
+                        wrapMode: Text.Wrap
+                        font.pixelSize: Math.round(11 * view.s)
+                        color: view.theme.text
+                    }
+                    Label {
+                        visible: model.status !== ""
+                        text: model.status
+                        font.pixelSize: Math.round(9.5 * view.s)
+                        color: view.theme.textDim
+                    }
+                }
+            }
+        }
+
+        // ---- notices (errors, compaction, connection): centered, muted ----
+        DelegateChoice {
+            Label {
+                width: ListView.view.width
+                horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.Wrap
-                color: model.kind === "reasoning" || model.kind === "notice" ? view.theme.textDim : view.theme.text
-                linkColor: view.theme.accent
-                font.pixelSize: Math.round(13 * view.s)
-                font.italic: model.kind === "reasoning" || model.kind === "notice"
-                onLinkActivated: (link) => Qt.openUrlExternally(link)
-            }
-
-            Label {
-                width: parent.width
-                visible: model.kind === "tool" && model.detail !== ""
-                text: model.detail
-                elide: Text.ElideRight
-                color: view.theme.textDim
-                font.pixelSize: Math.round(10 * view.s)
-            }
-
-            Label {
-                width: parent.width
-                visible: (model.kind === "tool" || model.kind === "request") && model.status !== ""
-                text: model.status
-                color: model.status === "error" ? "#e5484d"
-                     : model.status === "running" || model.status === "pending" ? view.theme.accent
-                     : view.theme.textDim
-                font.pixelSize: Math.round(9 * view.s)
+                text: model.text
+                font.pixelSize: Math.round(10.5 * view.s)
+                font.italic: true
+                color: model.status === "error" ? "#e5484d" : view.theme.textDim
             }
         }
     }

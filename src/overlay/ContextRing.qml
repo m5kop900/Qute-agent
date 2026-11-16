@@ -73,11 +73,16 @@ Item {
     }
 
     HoverHandler { id: hover }
-    ToolTip.visible: hover.hovered
-    ToolTip.delay: 150
-    ToolTip.text: root.percent >= 0
-                  ? qsTr("Context: %1% used\n%2 of %3 tokens")
-                        .arg(root.percent).arg(root.fmt(root.tokens)).arg(root.fmt(root.limit))
-                  : (root.tokens > 0 ? qsTr("%1 tokens used\ncontext limit unknown").arg(root.fmt(root.tokens))
-                                     : qsTr("Context usage not known yet"))
+    Hint {
+        target: root
+        theme: root.theme
+        s: root.s
+        shown: hover.hovered
+        delayMs: 150
+        text: root.percent >= 0
+              ? qsTr("Context: %1% used\n%2 of %3 tokens")
+                    .arg(root.percent).arg(root.fmt(root.tokens)).arg(root.fmt(root.limit))
+              : (root.tokens > 0 ? qsTr("%1 tokens used\ncontext limit unknown").arg(root.fmt(root.tokens))
+                                 : qsTr("Context usage not known yet"))
+    }
 }

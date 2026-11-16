@@ -22,6 +22,9 @@ public:
     Q_INVOKABLE void quit();
     Q_INVOKABLE void runSetup();     // opens a terminal running `qute opencode setup`
     Q_INVOKABLE void runSettings();  // opens the separate settings app
+    // Limits mouse input to a rectangle of the window (the window keeps its size, the rest of it
+    // is transparent and lets clicks pass through). Empty w/h clears the limit.
+    Q_INVOKABLE void setInputRegion(int x, int y, int w, int h);
     // Locates and starts qute-settings; also used by `qute settings`.
     static bool launchSettingsApp();
 

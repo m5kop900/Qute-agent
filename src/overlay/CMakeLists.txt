@@ -17,6 +17,9 @@ qt_add_qml_module(qute
         ConversationView.qml
         AttachmentStrip.qml
         Theme.qml
+        MenuStrip.qml
+        Hint.qml
+        PillButton.qml
 )
 
 target_link_libraries(qute PRIVATE qute_setup qute_core Qt6::QuickControls2)
