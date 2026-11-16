@@ -295,8 +295,30 @@ void OpenCodeClient::handleBusEvent(const QString &type, const QJsonObject &p)
         return;
     }
     const QString sid = sessionOf(p);
-    if (!sid.isEmpty() && sid != m_sessionId)
+
+    // Sub-agents run in CHILD sessions. Remember them, otherwise their tool activity and - worse - their permission
+    // requests would be dropped and the agent would wait forever.
+    if (type == QLatin1String("session.created") || type == QLatin1String("session.forked")) {
+        QString parent = p.value("parentID").toString();
+        if (parent.isEmpty()) parent = p.value("info").toObject().value("parentID").toString();
+        if (parent.isEmpty()) parent = p.value("session").toObject().value("parentID").toString();
+        QString child = sid;
+        if (child.isEmpty()) child = p.value("info").toObject().value("id").toString();
+        if (child.isEmpty()) child = p.value("session").toObject().value("id").toString();
+        if (!parent.isEmpty() && (parent == m_sessionId || m_childSessions.contains(parent)) && !child.isEmpty())
+            m_childSessions.insert(child);
+    }
+    if (!sid.isEmpty() && sid != m_sessionId && !m_childSessions.contains(sid))
         return;                                                     // another session's event
+
+    if (type == QLatin1String("permission.asked") || type == QLatin1String("permission.updated")
+        || type == QLatin1String("form.created")) {
+        QString id = p.value("id").toString();
+        if (id.isEmpty()) id = p.value("requestID").toString();
+        if (id.isEmpty()) id = p.value("formID").toString();
+        if (!id.isEmpty())
+            m_requestSession.insert(id, sid.isEmpty() ? m_sessionId : sid);
+    }
     setConnected(true);                                             // any event proves the stream is alive
 
     if (type == QLatin1String("message.updated")) {
@@ -553,13 +575,46 @@ void OpenCodeClient::answerPermission(const QString &permissionId, const QString
 {
     if (m_sessionId.isEmpty() || permissionId.isEmpty())
         return;
+    // The request may come from a sub-agent's child session: answer in the session that asked.
+    const QString session = m_requestSession.value(permissionId, m_sessionId);
+    QString path;
+    QJsonObject body;
     if (isV2()) {
-        // TODO(M5, verify in /doc): V2 moved permissions to /api/permission/* and "forms"; until verified, report it.
-        setError(tr("Answering permission requests is not wired for OpenCode 2 yet - answer in the opencode TUI"));
-        return;
+        // OpenCode 2: POST /api/session/{sid}/permission/{requestID}/reply  {"decision": once|always|reject}
+        path = QStringLiteral("/api/session/%1/permission/%2/reply").arg(session, permissionId);
+        body.insert("decision", response);
+    } else {
+        path = QStringLiteral("/session/%1/permissions/%2").arg(session, permissionId);
+        body.insert("response", response);
     }
-    postJson(QStringLiteral("/session/%1/permissions/%2").arg(m_sessionId, permissionId),
-             QJsonObject{{"response", response}}, tr("Permission reply"));
+    QNetworkReply *r = m_nam->post(makeRequest(path), QJsonDocument(body).toJson(QJsonDocument::Compact));
+    connect(r, &QNetworkReply::finished, this, [this, r, permissionId] {
+        r->deleteLater();
+        if (r->error() != QNetworkReply::NoError) {
+            setError(tr("Permission reply failed: %1 %2").arg(r->errorString(), QString::fromUtf8(r->readAll().left(200))));
+            return;
+        }
+        // Do not rely on the stream alone: leave the "waiting" state as soon as the server accepted the answer.
+        emit serverEvent(QStringLiteral("permission.replied"), QJsonObject{{"id", permissionId}, {"sessionID", m_sessionId}});
+        m_requestSession.remove(permissionId);
+    });
+}
+
+void OpenCodeClient::cancelForm(const QString &formId)
+{
+    if (!isV2() || m_sessionId.isEmpty() || formId.isEmpty())
+        return;
+    const QString session = m_requestSession.value(formId, m_sessionId);
+    QNetworkReply *r = m_nam->deleteResource(makeRequest(QStringLiteral("/api/session/%1/form/%2").arg(session, formId)));
+    connect(r, &QNetworkReply::finished, this, [this, r, formId] {
+        r->deleteLater();
+        if (r->error() != QNetworkReply::NoError) {
+            setError(tr("Cancelling the question failed: %1").arg(r->errorString()));
+            return;
+        }
+        emit serverEvent(QStringLiteral("form.cancelled"), QJsonObject{{"id", formId}, {"sessionID", m_sessionId}});
+        m_requestSession.remove(formId);
+    });
 }
 
 void OpenCodeClient::setConnected(bool c)

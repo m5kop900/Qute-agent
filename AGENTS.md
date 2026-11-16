@@ -51,6 +51,11 @@ docs/          ARCHITECTURE, OPENCODE, SPRITE_PACK, PLATFORMS, ROADMAP
 tools/         gen_qute_pack.py (art generator, optional, not part of the build)
 ```
 
+## Feature work (docs/ROADMAP.md, Part 2: F0–F7)
+- Small incremental commits; audit first; no rewrites of working code without a written reason; prefer native OpenCode APIs (no own summarizer/mode logic/model list).
+- A feature is done only with passing tests AND a live check AND docs. A visible UI element alone is not done.
+- Endpoints marked (verify) in the roadmap are unverified: read the server's /openapi.json first.
+
 ## Work order — follow docs/ROADMAP.md (M0 → M8). Do NOT start a milestone before the previous one passes.
 
 ## Known risk areas (written WITHOUT being compiled or run — verify first, fix with evidence)

@@ -106,6 +106,13 @@ ApplicationWindow {
                     TextField { Layout.fillWidth: true; text: config.serverCommand; onEditingFinished: config.serverCommand = text }
                     Label { text: qsTr("Project folder") }
                     TextField { Layout.fillWidth: true; placeholderText: qsTr("empty = server default"); text: config.workDir; onEditingFinished: config.workDir = text }
+                    Label { text: qsTr("API generation") }
+                    ComboBox {
+                        Layout.fillWidth: true
+                        model: ["auto", "v1", "v2"]
+                        currentIndex: Math.max(0, model.indexOf(config.apiFlavor))
+                        onActivated: (i) => config.apiFlavor = model[i]
+                    }
                     Label { text: qsTr("Model provider / id") }
                     RowLayout {
                         TextField { Layout.fillWidth: true; placeholderText: "provider"; text: config.modelProvider; onEditingFinished: config.modelProvider = text }

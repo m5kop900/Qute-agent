@@ -116,12 +116,14 @@ Window {
                         elide: Text.ElideRight
                         color: appTheme.text
                         font.pixelSize: Math.round(12 * win.s)
-                        text: win.st === "waiting" ? (agent.detail || qsTr("Permission needed"))
+                        text: win.st === "waiting" ? (agent.requestKind === "form" ? qsTr("opencode asks: %1 (answer it in opencode, or cancel)").arg(agent.detail)
+                                                                       : (agent.detail || qsTr("Permission needed")))
                                                    : (agent.detail ? agent.detail + "…" : qsTr("Working…"))
                     }
-                    Button { visible: win.st === "waiting"; text: qsTr("Allow");  onClicked: client.answerPermission(agent.permissionId, "once") }
-                    Button { visible: win.st === "waiting"; text: qsTr("Always"); onClicked: client.answerPermission(agent.permissionId, "always") }
-                    Button { visible: win.st === "waiting"; text: qsTr("Deny");   onClicked: client.answerPermission(agent.permissionId, "reject") }
+                    Button { visible: win.st === "waiting" && agent.requestKind !== "form"; text: qsTr("Allow");  onClicked: client.answerPermission(agent.permissionId, "once") }
+                    Button { visible: win.st === "waiting" && agent.requestKind !== "form"; text: qsTr("Always"); onClicked: client.answerPermission(agent.permissionId, "always") }
+                    Button { visible: win.st === "waiting" && agent.requestKind !== "form"; text: qsTr("Deny");   onClicked: client.answerPermission(agent.permissionId, "reject") }
+                    Button { visible: win.st === "waiting" && agent.requestKind === "form"; text: qsTr("Cancel question"); onClicked: client.cancelForm(agent.permissionId) }
                     Button { visible: win.st !== "waiting"; text: qsTr("Stop");   onClicked: client.abort() }
                 }
 

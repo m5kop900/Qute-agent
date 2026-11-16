@@ -25,6 +25,18 @@ private slots:
         QCOMPARE(arr.size(), 2);
         QCOMPARE(OpenCodeClient::assistantTextAfterLastUser(arr), QString("answer"));
     }
+    void v2ProjectionIgnoresReasoningAndToolContent()
+    {
+        const auto doc = QJsonDocument::fromJson(
+            "{\"data\":[{\"type\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"run ls\"}]},"
+            "{\"type\":\"assistant\",\"agent\":\"build\",\"content\":["
+            "{\"type\":\"reasoning\",\"text\":\"let me think\"},"
+            "{\"type\":\"tool\",\"id\":\"call_1\",\"name\":\"bash\"},"
+            "{\"type\":\"text\",\"text\":\"Here are the files.\"}]}],\"cursor\":{\"next\":null}}");
+        const QJsonArray arr = OpenCodeClient::extractArray(doc);
+        QCOMPARE(arr.size(), 2);
+        QCOMPARE(OpenCodeClient::assistantTextAfterLastUser(arr), QString("Here are the files."));
+    }
     void ignoresSyntheticAndOtherTypes()
     {
         const auto doc = QJsonDocument::fromJson(R"([

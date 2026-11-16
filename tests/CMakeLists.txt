@@ -1,4 +1,4 @@
-foreach(t tst_sseparser tst_agentstate tst_jsonc tst_opencodeconfig tst_clientparse)
+foreach(t tst_sseparser tst_agentstate tst_jsonc tst_opencodeconfig tst_clientparse tst_spritepacks)
     qt_add_executable(${t} ${t}.cpp)
     target_link_libraries(${t} PRIVATE qute_setup qute_core Qt6::Test)
     add_test(NAME ${t} COMMAND ${t})

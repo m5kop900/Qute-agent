@@ -1,0 +1,63 @@
+{
+  "id": "cat",
+  "name": "Cat",
+  "description": "A round cat that raises a paw when it needs you.",
+  "author": "Qute Agent project",
+  "license": "CC0-1.0",
+  "version": 2,
+  "frame": {
+    "width": 256,
+    "height": 256
+  },
+  "variants": [
+    "ocean",
+    "mint",
+    "grape",
+    "rose",
+    "amber"
+  ],
+  "states": {
+    "idle": {
+      "file": "{variant}/idle.png",
+      "frames": 6,
+      "fps": 6
+    },
+    "thinking": {
+      "file": "{variant}/thinking.png",
+      "frames": 6,
+      "fps": 8
+    },
+    "working": {
+      "file": "{variant}/working.png",
+      "frames": 6,
+      "fps": 10
+    },
+    "waiting": {
+      "file": "{variant}/waiting.png",
+      "frames": 6,
+      "fps": 6
+    },
+    "done": {
+      "file": "{variant}/done.png",
+      "frames": 6,
+      "fps": 8
+    },
+    "error": {
+      "file": "{variant}/error.png",
+      "frames": 6,
+      "fps": 8
+    },
+    "offline": {
+      "file": "{variant}/offline.png",
+      "frames": 6,
+      "fps": 4
+    }
+  },
+  "fallback": {
+    "working": "thinking",
+    "waiting": "thinking",
+    "error": "idle",
+    "offline": "idle",
+    "done": "idle"
+  }
+}

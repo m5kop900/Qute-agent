@@ -8,6 +8,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QProcess>
+#include <QSet>
 #include <QStringList>
 #include <QTimer>
 
@@ -47,6 +48,7 @@ public:
     Q_INVOKABLE void sendPrompt(const QString &text);
     Q_INVOKABLE void abort();
     Q_INVOKABLE void answerPermission(const QString &permissionId, const QString &response); // once|always|reject
+    Q_INVOKABLE void cancelForm(const QString &formId);   // OpenCode 2: dismiss a question the agent asked
     Q_INVOKABLE void newSession();
 
     // pure helpers (unit-tested)
@@ -110,4 +112,6 @@ private:
     QHash<QString, QString> m_partText;
     QHash<QString, QString> m_partMessage;
     QHash<QString, QString> m_roles;
+    QSet<QString> m_childSessions;                 // sub-agent sessions spawned by our session
+    QHash<QString, QString> m_requestSession;      // permission/form id -> session that asked (may be a child)
 };

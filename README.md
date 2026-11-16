@@ -26,4 +26,6 @@ KDE: System Settings → Keyboard → Shortcuts → Add Command. macOS: Shortcut
 `docs/MACOS.md` · `docs/SETUP_WIZARD.md` · `docs/ARCHITECTURE.md` · `docs/OPENCODE.md` · `docs/SPRITE_PACK.md` · `docs/PLATFORMS.md` · `docs/ROADMAP.md` · `AGENTS.md`
 
 ## Status
-M3 passed: `qute toggle` opens the sprite+panel right next to the cursor, fully on-screen with room for the tallest size. Verified on Wayland via `spectacle`. Next is M4 (opencode connection) in docs/ROADMAP.md.
+M0–M4 done (verified on KDE Wayland and OpenCode 2.2.6), M7 sprite packs done (4 characters x 7 states x 5 colors, validated by
+`ctest`). Open: M5 (V2 tool events, permissions), M2b (wizard never run for real), M6/M7 live-switch check in the GUI.
+Details and evidence per milestone: `docs/ROADMAP.md` ("Review status").

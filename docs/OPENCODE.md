@@ -36,9 +36,41 @@ reconciles the final answer from the message list. Events still give live stream
 `session.status`, `session.idle`, `session.error`, `message.updated`, `message.part.updated`, `message.part.delta`,
 `permission.updated` | `permission.asked`, `permission.replied`, `session.execution.started|succeeded|failed` (V2).
 
-## TODO (verify against the running server, then fix code + this table)
-1. V2 prompt body: `{prompt:{text}}` vs flat `{text}` (client retries both; confirm and drop one).
-2. V2 permission / question handling (`/api/permission/*`, "forms"): `answerPermission` is intentionally disabled for V2.
-3. V2 projected message shape used by `assistantTextAfterLastUser` (defensive parser; add real samples to the test).
-4. V2 server start flags: assumed `opencode serve --hostname H --port P`; docs also mention `opencode serve --service`.
-5. V1 permission reply endpoint may have changed to `/permission/:id/reply` in newer 1.x builds.
+## Verified against a real OpenCode 2.2.6 server (M4, commit c3e6e27)
+- V2 prompt body is the FLAT form `{"text": "..."}`. The schema has `additionalProperties:false`, so `{"prompt":{"text":..}}` gets HTTP 400.
+  (`OpenCodeClient` sends flat first and keeps the nested form only as a retry for older builds.)
+- V2 does NOT emit `message.part.*`. The answer streams as `session.text.started|delta|ended` with
+  `{assistantMessageID, ordinal, delta | text}`; `ended` carries the authoritative full block text.
+- A wrong server password gives 401/403 on `/global/health` and `/api/info`; the client reports it instead of retrying silently.
+- The running V2 server publishes its schema at `/openapi.json` - read it before changing any V2 code.
+
+## V2 wire facts taken from upstream source/docs (M5; NOT yet exercised against a live server)
+Sources: opencode API reference https://opencode.ai/docs/api and https://opencode.ai/v2/docs/api/* ; reducer tests in
+PR anomalyco/opencode#40539 (`id` replaced `callID` in tool events); issue #35638 (tool `name` is only on `input.started`);
+the V2 audit quoted in GetterSethya/Opencode-Android-Client#3.
+- **SSE envelope:** frame data = `{id, type, created, data, location?, metadata?}`. Our `OpenCodeClient::onEventData` hands `data` on as the
+  event properties (falls back to `properties` for V1).
+- **Tool events** (`data` = `{sessionID, assistantMessageID, id, ...}`; `id` is the call id):
+  `session.tool.input.started {name}` -> `input.delta {delta}` (ephemeral) -> `input.ended {text}` -> `session.tool.called {input, executed, state?}`
+  -> `session.tool.progress` (ephemeral) -> `session.tool.success` | `session.tool.failed`. `AgentState` keeps a set of running call ids and
+  stays in `working` until the last one finishes.
+- **Other state events:** `session.execution.started|succeeded|failed|interrupted`, `session.step.started|ended|failed`,
+  `session.reasoning.started|delta|ended`, `session.text.started|delta|ended`, `session.shell.started|ended`,
+  `session.compaction.*`, `session.retry.scheduled`, ephemeral `session.status {status:{type}}` and `session.idle`.
+- **Permissions:** event `permission.asked` with `Permission.Request {id, sessionID, action, resources[], save?, metadata?, source?{type:"tool",messageID,callID}, message?}`,
+  `permission.replied`. Reply: `POST /api/session/{sessionID}/permission/{requestID}/reply` with `{"decision":"once|always|reject"}`.
+  The request can belong to a CHILD (sub-agent) session: answer in the session that asked (`OpenCodeClient::m_requestSession`).
+- **Questions are gone, replaced by Forms:** events `form.created|replied|cancelled`; reply `POST /api/session/{sid}/form/{fid}/reply {answer:{...}}`,
+  cancel `DELETE /api/session/{sid}/form/{fid}`. The overlay shows the title and offers "Cancel question"; answering fields is NOT implemented.
+- **Projected messages** (`GET /api/session/{id}/message`): `{data:[...], cursor}`; assistant message = `{type:"assistant", agent, providerID, content:[{type:"text"|"reasoning"|"tool", ...}], time}`;
+  text items carry `text`, tool items `{id, name, state}`.
+
+## Decision: OpenCode 2 is the target
+The V1 code paths (`/session`, `/event`, `message.part.*`, `/session/:id/permissions/:pid`) still exist and have tests, but get no new
+features. Removing them is an optional clean-up (see ROADMAP "M5c").
+
+## Still open (verify against the running server, then fix code + this table)
+1. Run the checklist in ROADMAP "M5 live check" against a real V2 server. Record any event whose payload differs from the list above.
+2. Sub-agent child sessions: the `parentID` field name on `session.created` is a guess (`parentID` / `info.parentID` / `session.parentID`).
+3. V2 server start flags: assumed `opencode serve --hostname H --port P`; docs also mention `opencode serve --service`.
+4. Form answering (fields: string/number/boolean/multiselect/external) is not implemented; only cancel.
