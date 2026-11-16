@@ -130,13 +130,27 @@ attachments, selectors or a context ring. Building those features on top of that
 | Tests | sseparser, agentstate (V1+V2), jsonc, opencodeconfig, clientparse, spritepacks |
 
 ## F0 — Foundations (prerequisite, not in the original specification)
-- [ ] **F0.1 `SessionStore` / `ConversationModel`** (C++ `QAbstractListModel`, module `src/core/`): ordered items `user | assistant-text | reasoning | tool | permission/form | notice`,
+- [x] **F0.1 `SessionStore` / `ConversationModel`** (C++ `QAbstractListModel`, module `src/core/`): ordered items `user | assistant-text | reasoning | tool | permission/form | notice`,
       fed by V2 events (`session.text.*`, `session.tool.*`, `session.step.*`) and **reconciled** from `GET /api/session/{id}/message` (paginated `{data,cursor}`) after each turn and on (re)connect.
       Exposes: items, `busy`, `sessionId`, `workDir`, usage (tokens/cost), active agent/model. `OpenCodeClient` stays the transport; QML never parses JSON.
       *Done when:* unit tests replay recorded event sequences (add fixtures under `tests/fixtures/`) and produce the same items as the projection endpoint.
-- [ ] **F0.2 Catalog service** (`OpenCodeCatalog`): cached, refreshable lists of **commands**, **models** (+variants), **agents**, **file search** results; refresh on `*.updated` events (`command.updated`, `model.updated`, `agent.updated`, `config.updated`). No hardcoded lists anywhere.
-- [ ] **F0.3 Overlay layout skeleton:** header strip (mode · model · effort · context ring), conversation list, composer with attachment strip; compact by default, three size levels kept. Only structure + placeholders; the features fill it later.
-- [ ] **F0.4 Mock OpenCode server** for tests (`tests/mockserver/`, Qt-only, serves canned `/api/*` + SSE) so F1–F5 have automated tests without a model.
+      **Status:** implemented (`conversationmodel.*`, `sessionstore.*`; `OpenCodeClient::requestMessageHistory` /
+      `messageHistoryReceived`). `tests/fixtures/v2-turn-events.json` + `v2-turn-messages.json`; `tst_conversationmodel`
+      asserts the replay equals the projection, `tst_sessionstore` covers busy/usage/agent/model/workDir. 9/9 ctest green.
+- [x] **F0.2 Catalog service** (`OpenCodeCatalog`): cached, refreshable lists of **commands**, **models** (+variants), **agents**, **file search** results; refresh on
+      `*.updated` events (`command.updated`, `model.updated`, `agent.updated`, `config.updated`). No hardcoded lists anywhere.
+      **Status:** implemented (`opencodecatalog.*`); parsers tested (`tst_catalog`); refresh-on-connect and the `/api/fs/find`
+      round trip tested against the mock server. V2 only for now (V1 endpoints differ; lists stay empty). Endpoint shapes are
+      still (verify) - parsers are tolerant of array / `{data:[]}` / `{providers:[]}` forms.
+- [~] **F0.3 Overlay layout skeleton:** header strip (mode · model · effort · context ring), conversation list, composer with attachment strip; compact by default, three size levels kept.
+      Only structure + placeholders; the features fill it later.
+      **Status:** skeleton implemented (`HeaderStrip.qml`, `ConversationView.qml`, `AttachmentStrip.qml`; `Main.qml` uses the
+      conversation list instead of the single text view; new `store` / `conversation` / `catalog` context properties).
+      Header/conversation appear at level >= 1; level 0 stays prompt-only. Offscreen smoke run: no QML/runtime errors.
+      **Needs the user's eyes:** toggle the overlay and look at the header + history once a real turn has run.
+- [x] **F0.4 Mock OpenCode server** for tests (`tests/mockserver/`, Qt-only, serves canned `/api/*` + SSE) so F1–F5 have automated tests without a model.
+      **Status:** implemented (`tests/mockserver/mockopencodeserver.*`); used by `tst_catalog` for the full handshake
+      (`/global/health` -> `/api/session` -> `/api/event`), catalog fetches and `requestMessageHistory`.
 
 ## F1 — Prompt box & input system (priority: Critical)
 Depends on: F0.1–F0.3. **Audit:** see table (single-line field, text only).

@@ -1,0 +1,22 @@
+{
+  "data": [
+    {
+      "id": "msg_u1",
+      "type": "user",
+      "content": [{"type": "text", "text": "run the tests"}]
+    },
+    {
+      "id": "msg_a1",
+      "type": "assistant",
+      "agent": "build",
+      "providerID": "anthropic",
+      "modelID": "claude-sonnet",
+      "content": [
+        {"type": "text", "text": "I will run the tests."},
+        {"type": "tool", "id": "call_1", "name": "bash", "state": {"status": "completed", "input": {"command": "ctest"}}},
+        {"type": "text", "text": "All 6 tests passed."}
+      ]
+    }
+  ],
+  "cursor": {"next": null}
+}

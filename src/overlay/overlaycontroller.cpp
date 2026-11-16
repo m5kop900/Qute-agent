@@ -6,6 +6,7 @@
 
 #include <QCoreApplication>
 #include <QGuiApplication>
+#include <QProcess>
 #include <QQuickWindow>
 
 OverlayController::OverlayController(PlatformShell *shell, AppConfig *config, QObject *parent)
@@ -59,4 +60,17 @@ void OverlayController::runSetup()
     hide();
     if (!TerminalLauncher::launch(QCoreApplication::applicationFilePath(), {QStringLiteral("opencode"), QStringLiteral("setup")}))
         qWarning("qute: no terminal emulator found. Run `qute opencode setup` in a terminal yourself.");
+}
+
+bool OverlayController::launchSettingsApp()
+{
+    const QString local = QCoreApplication::applicationDirPath() + QStringLiteral("/qute-settings");
+    return QProcess::startDetached(local, {}) || QProcess::startDetached(QStringLiteral("qute-settings"), {});
+}
+
+void OverlayController::runSettings()
+{
+    hide();
+    if (!launchSettingsApp())
+        qWarning("qute: could not start qute-settings");
 }

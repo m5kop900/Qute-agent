@@ -2,6 +2,7 @@
 #include <QElapsedTimer>
 #include <QHash>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
@@ -11,6 +12,8 @@
 #include <QSet>
 #include <QStringList>
 #include <QTimer>
+
+#include <functional>
 
 #include "sseparser.h"
 
@@ -43,13 +46,22 @@ public:
     QString lastError() const { return m_lastError; }
     bool opencodeMissing() const { return m_opencodeMissing; }
     QString apiName() const;
+    Q_INVOKABLE bool isV2Server() const { return isV2(); }
 
     Q_INVOKABLE void start();
     Q_INVOKABLE void sendPrompt(const QString &text);
     Q_INVOKABLE void abort();
     Q_INVOKABLE void answerPermission(const QString &permissionId, const QString &response); // once|always|reject
     Q_INVOKABLE void cancelForm(const QString &formId);   // OpenCode 2: dismiss a question the agent asked
+    // OpenCode 2 selection endpoints. Both answer 204 and persist on the session; on success a synthetic
+    // event is emitted so the UI updates immediately (same pattern as answerPermission).
+    Q_INVOKABLE void selectAgent(const QString &agent);
+    Q_INVOKABLE void selectModel(const QString &providerID, const QString &modelID, const QString &variant);
     Q_INVOKABLE void newSession();
+    // Ask for the projected message history (oldest first). SessionStore uses this to reconcile.
+    Q_INVOKABLE void requestMessageHistory(int limit = 100);
+    // Transport for the catalog service: fetch any API path and hand the parsed body back.
+    void fetchJson(const QString &path);
 
     // pure helpers (unit-tested)
     static QString assistantTextAfterLastUser(const QJsonArray &messagesAscending);
@@ -61,9 +73,13 @@ signals:
     void sessionChanged();
     void lastErrorChanged();
     void opencodeMissingChanged();
-    void promptSent();
+    void promptSent(const QString &text);
     // Every bus event for OUR session (unwrapped to type + properties), plus synthetic "session.status idle".
     void serverEvent(const QString &type, const QJsonObject &properties);
+    // Projected message list (oldest first), fetched after a turn / on (re)connect.
+    void messageHistoryReceived(const QJsonArray &messages);
+    // Result of fetchJson() for the catalog service. status is the HTTP status code (0 = network error).
+    void jsonFetched(const QString &path, const QJsonDocument &document, int status);
 
 private:
     bool isV2() const { return m_api == Api::V2; }
@@ -83,10 +99,13 @@ private:
     void setError(const QString &e);
     void setMissing(bool m);
     void postJson(const QString &path, const QJsonObject &body, const QString &what);
+    void postCommand(const QString &path, const QJsonObject &body, const QString &what,
+                     const std::function<void()> &onSuccess);
     void postPrompt(const QJsonObject &body, const QJsonObject &fallbackBody);
     void pollStatus();
     void turnEnded(bool synthesizeIdleEvent);
     void reconcileMessages();
+    void fetchMessages(int limit, bool updateResponseText);
 
     AppConfig *m_config;
     QNetworkAccessManager *m_nam;

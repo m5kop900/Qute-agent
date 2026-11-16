@@ -5,9 +5,12 @@
 //   qute --daemon   start hidden (autostart)
 #include "agentstate.h"
 #include "appconfig.h"
+#include "conversationmodel.h"
+#include "opencodecatalog.h"
 #include "opencodeclient.h"
 #include "overlaycontroller.h"
 #include "platformshell.h"
+#include "sessionstore.h"
 #include "setupcli.h"
 #include "singleinstance.h"
 #include "spritepackmanager.h"
@@ -15,7 +18,6 @@
 #include <QCommandLineParser>
 #include <QCoreApplication>
 #include <QGuiApplication>
-#include <QProcess>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
@@ -63,9 +65,8 @@ int main(int argc, char *argv[])
     const QString cmd = parser.positionalArguments().value(0, QStringLiteral("toggle"));
 
     if (cmd == QLatin1String("settings")) {
-        const QString local = QCoreApplication::applicationDirPath() + QStringLiteral("/qute-settings");
-        if (!QProcess::startDetached(local, {}))
-            QProcess::startDetached(QStringLiteral("qute-settings"), {});
+        if (!OverlayController::launchSettingsApp())
+            qWarning("qute: could not start qute-settings");
         return 0;
     }
 
@@ -89,6 +90,8 @@ int main(int argc, char *argv[])
     QObject::connect(&config, &AppConfig::changed, &packs, [&] { packs.load(config.packId(), config.variant()); });
 
     OpenCodeClient client(&config);
+    OpenCodeCatalog catalog(&client);
+    SessionStore store(&client, &config, &catalog);
     AgentState agent;
     QObject::connect(&client, &OpenCodeClient::serverEvent, &agent, &AgentState::handleEvent);
     QObject::connect(&client, &OpenCodeClient::connectedChanged, &agent, &AgentState::setConnected);
@@ -100,6 +103,9 @@ int main(int argc, char *argv[])
     ctx->setContextProperty(QStringLiteral("packs"), &packs);
     ctx->setContextProperty(QStringLiteral("client"), &client);
     ctx->setContextProperty(QStringLiteral("agent"), &agent);
+    ctx->setContextProperty(QStringLiteral("store"), &store);
+    ctx->setContextProperty(QStringLiteral("conversation"), store.conversation());
+    ctx->setContextProperty(QStringLiteral("catalog"), &catalog);
 
     PlatformShell *shell = PlatformShell::create(&app);
     auto *controller = new OverlayController(shell, &config, &app);   // window is attached after load

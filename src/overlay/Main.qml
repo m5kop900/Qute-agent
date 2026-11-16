@@ -14,16 +14,17 @@ Window {
     readonly property string st: agent.stateName
     readonly property bool busy: st === "thinking" || st === "working" || st === "waiting"
 
-    // 0 = prompt only, 1 = reply visible, 2 = long reply
+    // 0 = prompt only, 1 = reply visible, 2 = long reply (or a picker is open and needs room)
     readonly property int desiredLevel: {
-        if (client.responseText.length > 500) return 2
-        if (client.responseText.length > 0 || busy) return 1
+        if (composer.popupOpen) return 2
+        if (client.responseText.length > 500 || conversation.count > 4) return 2
+        if (client.responseText.length > 0 || busy || conversation.count > 0) return 1
         if (!client.connected && client.lastError !== "") return 1
         return 0
     }
     property int level: 0
-    readonly property var panelHeights: [58, 190, 380]
-    readonly property var windowHeights: [150, 290, 490]
+    readonly property var panelHeights: [100, 250, 430]
+    readonly property var windowHeights: [150, 350, 530]
     readonly property int maxHeight: Math.round(windowHeights[2] * s)   // read by the C++ platform shell
 
     width: Math.round(560 * s)
@@ -49,7 +50,7 @@ Window {
         function onShown() {
             win.level = win.desiredLevel
             win.height = win.heightFor(win.level)
-            prompt.focusInput()
+            composer.focusInput()
         }
     }
 
@@ -82,11 +83,10 @@ Window {
                 anchors.margins: Math.round(10 * win.s)
                 spacing: Math.round(8 * win.s)
 
-                ResponseView {
+                ConversationView {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     visible: win.desiredLevel > 0
-                    text: client.responseText
                     theme: appTheme
                     s: win.s
                 }
@@ -100,6 +100,10 @@ Window {
                         color: appTheme.text
                         font.pixelSize: Math.round(12 * win.s)
                         text: client.lastError
+                    }
+                    Button {
+                        text: qsTr("Settings")
+                        onClicked: controller.runSettings()
                     }
                     Button {
                         visible: client.opencodeMissing
@@ -127,12 +131,21 @@ Window {
                     Button { visible: win.st !== "waiting"; text: qsTr("Stop");   onClicked: client.abort() }
                 }
 
-                PromptBox {
-                    id: prompt
+                AttachmentStrip {                 // F1 fills this; empty for now
                     Layout.fillWidth: true
                     theme: appTheme
                     s: win.s
+                }
+
+                Composer {
+                    id: composer
+                    Layout.fillWidth: true
+                    theme: appTheme
+                    s: win.s
+                    sessionStore: store
+                    modelCatalog: catalog
                     enabled: client.connected
+                    offText: client.lastError !== "" ? qsTr("opencode is not available") : qsTr("Connecting to opencode…")
                     onSubmitted: function (text) { client.sendPrompt(text) }
                 }
             }

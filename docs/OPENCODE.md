@@ -69,6 +69,25 @@ the V2 audit quoted in GetterSethya/Opencode-Android-Client#3.
 The V1 code paths (`/session`, `/event`, `message.part.*`, `/session/:id/permissions/:pid`) still exist and have tests, but get no new
 features. Removing them is an optional clean-up (see ROADMAP "M5c").
 
+## F0 transport additions (catalog + history; endpoint shapes (verify))
+`OpenCodeClient` gained two small transport primitives so the services never touch HTTP:
+- `requestMessageHistory(limit)` -> `GET /api/session/{id}/message?order=desc&limit=N` (V2) and emits
+  `messageHistoryReceived(QJsonArray)` oldest-first. `SessionStore` reconciles the conversation timeline from it.
+- `fetchJson(path)` -> `GET <path>` and emits `jsonFetched(path, document, httpStatus)`.
+  `OpenCodeCatalog` uses it for `GET /api/command`, `/api/model`, `/api/agent` and `/api/fs/find?query=...`.
+  These four paths come from the V2 docs, not from a live server yet: read `/openapi.json` and fix the parsers in
+  `src/core/opencodecatalog.cpp` if a shape differs. The parsers tolerate array, `{data:[...]}` and `{providers:[...]}`.
+
+## Connection failures are reported, not retried silently
+`OpenCodeClient::notRunning()` distinguishes the cases where waiting can never help and sets `lastError`
+(with a `Settings` button in the overlay, `OverlayController::runSettings()`):
+- remote `serverUrl` (not 127.0.0.1/localhost) -> "not reachable at <url>, check URL/password"
+- local but `autoStartServer = false` -> "not running at <url>, enable Auto-start server, or start it: <cmd> serve --hostname <h> --port <p>"
+- autostart on, server spawned -> no error while it boots; `QProcess::finished` reports "server exited (code N)"/"crashed"
+  and re-arms the retry instead of retrying forever behind a "Connecting…" placeholder.
+Errors clear automatically on `setConnected(true)`. Tests: `tst_clientparse` (unreachable without autostart, spawned
+server exits).
+
 ## Still open (verify against the running server, then fix code + this table)
 1. Run the checklist in ROADMAP "M5 live check" against a real V2 server. Record any event whose payload differs from the list above.
 2. Sub-agent child sessions: the `parentID` field name on `session.created` is a guess (`parentID` / `info.parentID` / `session.parentID`).

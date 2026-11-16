@@ -21,6 +21,21 @@
 4. QML: `SpriteView.stateName = agent.stateName` → `packs.stateInfo(state)` → `AnimatedSprite`.
 5. Settings app writes `config.json` → overlay `QFileSystemWatcher` → `AppConfig::load()` → `changed()` → bindings update, pack reloads.
 
+## Session data (F0)
+`OpenCodeClient` is the only transport. On top of it, three services live in `src/core/`:
+- `ConversationModel` (`QAbstractListModel`) — ordered items `user | assistant-text | reasoning | tool | request | notice`.
+  Pure: `applyEvent(type, properties)`, `applyUserPrompt(text)`, `applyMessages(projection)`. Unit-tested by replaying a
+  recorded event sequence and comparing it with the projection of the same turn (`tests/fixtures/`).
+- `SessionStore` — owns the model and tracks `busy`, `sessionId`, `workDir`, `activeAgent`, `activeModel`, token `usage`.
+  It consumes `serverEvent`, `promptSent` and `messageHistoryReceived`; it never parses HTTP itself.
+- `OpenCodeCatalog` — commands, models (+variants), agents and file search. Refreshes from
+  `OpenCodeClient::fetchJson()` on connect and on `command.updated` / `model.updated` / `agent.updated` / `config.updated`.
+
+Reconcile: after a turn (and on reconnect) `OpenCodeClient::requestMessageHistory()` fetches the projected message list and
+emits `messageHistoryReceived` (oldest first); `SessionStore` replaces the timeline with it. The QML overlay uses the
+context properties `store`, `conversation` and `catalog` and never sees JSON.
+
+
 ## State → sprite (names are the contract between AgentState and packs)
 `offline idle thinking working waiting done error`. Packs may omit states; the manifest `fallback` map decides.
 

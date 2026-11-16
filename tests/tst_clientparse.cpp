@@ -1,10 +1,52 @@
+#include "appconfig.h"
 #include "opencodeclient.h"
+
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QtTest>
 
 class TstClientParse : public QObject {
     Q_OBJECT
 private slots:
+    // A server that is not running and will not be started must explain itself instead of showing
+    // "Connecting to opencode…" forever (the exact symptom that made F0 impossible to diagnose).
+    void unreachableServerWithoutAutoStartExplainsWhy()
+    {
+        AppConfig config;
+        config.setServerUrl(QStringLiteral("http://127.0.0.1:59871"));   // nothing listens here
+        config.setServerPassword(QString());
+        config.setAutoStartServer(false);
+        config.setApiFlavor(QStringLiteral("v2"));
+
+        OpenCodeClient client(&config);
+        client.start();
+
+        QTRY_VERIFY_WITH_TIMEOUT(!client.lastError().isEmpty(), 8000);
+        QVERIFY(!client.connected());
+        QVERIFY2(client.lastError().contains(QStringLiteral("Auto-start server")), qPrintable(client.lastError()));
+        QVERIFY2(client.lastError().contains(config.serverUrl()), qPrintable(client.lastError()));
+        QVERIFY2(client.lastError().contains(QStringLiteral("--port 59871")), qPrintable(client.lastError()));
+    }
+
+    void spawnedServerThatExitsIsReported()
+    {
+        if (!QFileInfo::exists(QStringLiteral("/bin/false")))
+            QSKIP("/bin/false not available on this platform");
+
+        AppConfig config;
+        config.setServerUrl(QStringLiteral("http://127.0.0.1:59872"));
+        config.setServerPassword(QString());
+        config.setAutoStartServer(true);
+        config.setServerCommand(QStringLiteral("/bin/false"));           // starts, then exits immediately
+        config.setApiFlavor(QStringLiteral("v2"));
+
+        OpenCodeClient client(&config);
+        client.start();
+
+        QTRY_VERIFY_WITH_TIMEOUT(client.lastError().contains(QStringLiteral("exited"))
+                                     || client.lastError().contains(QStringLiteral("crashed")), 8000);
+        QVERIFY(!client.connected());
+    }
     void v1MessageListKeepsOnlyTextAfterLastUser()
     {
         const auto doc = QJsonDocument::fromJson(R"([

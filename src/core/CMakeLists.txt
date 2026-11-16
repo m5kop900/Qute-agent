@@ -3,6 +3,9 @@ qt_add_library(qute_core STATIC
     singleinstance.cpp   singleinstance.h
     sseparser.cpp        sseparser.h
     agentstate.cpp       agentstate.h
+    conversationmodel.cpp conversationmodel.h
+    sessionstore.cpp     sessionstore.h
+    opencodecatalog.cpp  opencodecatalog.h
     opencodeclient.cpp   opencodeclient.h
     spritepackmanager.cpp spritepackmanager.h
     opencodelocator.cpp  opencodelocator.h

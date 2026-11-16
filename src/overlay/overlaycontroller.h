@@ -21,6 +21,9 @@ public:
     Q_INVOKABLE void toggle();
     Q_INVOKABLE void quit();
     Q_INVOKABLE void runSetup();     // opens a terminal running `qute opencode setup`
+    Q_INVOKABLE void runSettings();  // opens the separate settings app
+    // Locates and starts qute-settings; also used by `qute settings`.
+    static bool launchSettingsApp();
 
 signals:
     void shown();     // QML focuses the prompt box and resets its size on this

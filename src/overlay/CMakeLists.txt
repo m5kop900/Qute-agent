@@ -10,8 +10,12 @@ qt_add_qml_module(qute
     QML_FILES
         Main.qml
         SpriteView.qml
-        PromptBox.qml
-        ResponseView.qml
+        Composer.qml
+        ControlChip.qml
+        ContextRing.qml
+        PickerPopup.qml
+        ConversationView.qml
+        AttachmentStrip.qml
         Theme.qml
 )
 

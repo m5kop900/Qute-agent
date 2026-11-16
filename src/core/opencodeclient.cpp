@@ -26,6 +26,7 @@ OpenCodeClient::~OpenCodeClient()
         m_events->abort();
     }
     if (m_server) {                         // only set when WE started the server
+        m_server->disconnect(this);         // the finished handler must not run during teardown
         m_server->terminate();
         m_server->waitForFinished(1500);
     }
@@ -140,9 +141,27 @@ void OpenCodeClient::authError()
 void OpenCodeClient::notRunning()
 {
     setConnected(false);
-    if (m_config->autoStartServer() && !m_server && !m_opencodeMissing)
+
+    // "Connecting…" forever is the worst outcome: say WHY there is no server and what to do about it.
+    const QUrl u(m_base);
+    const QString host = u.host();
+    const bool local = host.isEmpty() || host == QLatin1String("127.0.0.1") || host == QLatin1String("localhost");
+    if (!local) {
+        setError(tr("opencode is not reachable at %1. Check the server URL and password in settings.").arg(m_base));
+        m_retry.start(4000);
+        return;
+    }
+    if (!m_config->autoStartServer()) {
+        const QString program = m_config->serverCommand().isEmpty() ? QStringLiteral("opencode")
+                                                                    : m_config->serverCommand();
+        setError(tr("opencode is not running at %1. Enable \"Auto-start server\" in settings, or start it:  %2 serve --hostname %3 --port %4")
+                     .arg(m_base, program, host, QString::number(u.port(4096))));
+        m_retry.start(4000);
+        return;
+    }
+    if (!m_server && !m_opencodeMissing)
         startServerProcess();
-    m_retry.start(m_server ? 1000 : 4000);
+    m_retry.start(m_server ? 1000 : 4000);           // shorter retry while the server we spawned is booting
 }
 
 void OpenCodeClient::startServerProcess()
@@ -178,8 +197,23 @@ void OpenCodeClient::startServerProcess()
             setMissing(true);
             setError(tr("Could not start opencode. Run:  qute opencode doctor"));
         }
-        m_server->deleteLater();
-        m_server = nullptr;
+        if (m_server) {
+            m_server->deleteLater();
+            m_server = nullptr;
+        }
+    });
+    // A spawned server that exits (bad port, crash, config error) must not leave us retrying silently forever.
+    connect(m_server, &QProcess::finished, this, [this](int code, QProcess::ExitStatus status) {
+        if (m_server) {
+            m_server->deleteLater();
+            m_server = nullptr;
+        }
+        if (m_connected)
+            return;
+        setError(status == QProcess::CrashExit
+                     ? tr("opencode server crashed. Run:  qute opencode doctor")
+                     : tr("opencode server exited (code %1). Run:  qute opencode doctor").arg(code));
+        m_retry.start(4000);
     });
     m_server->start(program, {QStringLiteral("serve"), QStringLiteral("--hostname"), host,
                               QStringLiteral("--port"), QString::number(u.port(4096))});
@@ -292,6 +326,7 @@ void OpenCodeClient::handleBusEvent(const QString &type, const QJsonObject &p)
 {
     if (type == QLatin1String("server.connected")) {
         setConnected(true);
+        emit serverEvent(type, p);            // SessionStore reconciles the history on every (re)connect
         return;
     }
     const QString sid = sessionOf(p);
@@ -478,12 +513,22 @@ QString OpenCodeClient::assistantTextAfterLastUser(const QJsonArray &asc)
 
 void OpenCodeClient::reconcileMessages()
 {
+    fetchMessages(100, true);          // F0: recent history; pagination follows when F3 needs it
+}
+
+void OpenCodeClient::requestMessageHistory(int limit)
+{
+    fetchMessages(qMax(1, limit), false);
+}
+
+void OpenCodeClient::fetchMessages(int limit, bool updateResponseText)
+{
     if (m_sessionId.isEmpty())
         return;
-    const QString path = isV2() ? QStringLiteral("/api/session/%1/message?order=desc&limit=10").arg(m_sessionId)
-                                : QStringLiteral("/session/%1/message?limit=10").arg(m_sessionId);
+    const QString path = isV2() ? QStringLiteral("/api/session/%1/message?order=desc&limit=%2").arg(m_sessionId).arg(limit)
+                                : QStringLiteral("/session/%1/message?limit=%2").arg(m_sessionId).arg(limit);
     QNetworkReply *r = m_nam->get(makeRequest(path));
-    connect(r, &QNetworkReply::finished, this, [this, r] {
+    connect(r, &QNetworkReply::finished, this, [this, r, updateResponseText] {
         r->deleteLater();
         if (r->error() != QNetworkReply::NoError)
             return;
@@ -493,11 +538,26 @@ void OpenCodeClient::reconcileMessages()
             for (qsizetype i = arr.size() - 1; i >= 0; --i) rev.append(arr.at(i));
             arr = rev;
         }
-        const QString text = assistantTextAfterLastUser(arr);
-        if (!text.isEmpty() && text != m_responseText) {
-            m_responseText = text;
-            emit responseTextChanged();
+        if (updateResponseText) {
+            const QString text = assistantTextAfterLastUser(arr);
+            if (!text.isEmpty() && text != m_responseText) {
+                m_responseText = text;
+                emit responseTextChanged();
+            }
         }
+        emit messageHistoryReceived(arr);
+    });
+}
+
+void OpenCodeClient::fetchJson(const QString &path)
+{
+    QNetworkReply *r = m_nam->get(makeRequest(path));
+    connect(r, &QNetworkReply::finished, this, [this, r, path] {
+        r->deleteLater();
+        const int status = r->error() == QNetworkReply::NoError
+                               ? r->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt()
+                               : 0;
+        emit jsonFetched(path, QJsonDocument::fromJson(r->readAll()), status);
     });
 }
 
@@ -509,6 +569,22 @@ void OpenCodeClient::postJson(const QString &path, const QJsonObject &body, cons
         r->deleteLater();
         if (r->error() != QNetworkReply::NoError)
             setError(tr("%1 failed: %2 %3").arg(what, r->errorString(), QString::fromUtf8(r->readAll().left(200))));
+    });
+}
+
+void OpenCodeClient::postCommand(const QString &path, const QJsonObject &body, const QString &what,
+                                 const std::function<void()> &onSuccess)
+{
+    QNetworkReply *r = m_nam->post(makeRequest(path), QJsonDocument(body).toJson(QJsonDocument::Compact));
+    connect(r, &QNetworkReply::finished, this, [this, r, what, onSuccess] {
+        r->deleteLater();
+        if (r->error() != QNetworkReply::NoError) {
+            setError(tr("%1 failed: %2 %3").arg(what, r->errorString(),
+                                                QString::fromUtf8(r->readAll().left(200))));
+            return;
+        }
+        if (onSuccess)
+            onSuccess();
     });
 }
 
@@ -549,7 +625,7 @@ void OpenCodeClient::sendPrompt(const QString &text)
     m_idleMisses = 0;
     m_promptClock.start();
     m_poll.start();
-    emit promptSent();
+    emit promptSent(text);
 
     if (isV2()) {
         // Body shape (verified against opencode 2.2.6 /openapi.json): flat {"text":...}; the schema has
@@ -615,6 +691,33 @@ void OpenCodeClient::cancelForm(const QString &formId)
         emit serverEvent(QStringLiteral("form.cancelled"), QJsonObject{{"id", formId}, {"sessionID", m_sessionId}});
         m_requestSession.remove(formId);
     });
+}
+
+void OpenCodeClient::selectAgent(const QString &agent)
+{
+    if (!isV2() || m_sessionId.isEmpty() || agent.isEmpty())
+        return;
+    const QString session = m_sessionId;
+    postCommand(QStringLiteral("/api/session/%1/agent").arg(session), QJsonObject{{"agent", agent}},
+                tr("Switching the agent"), [this, session, agent] {
+                    emit serverEvent(QStringLiteral("session.agent.selected"),
+                                     QJsonObject{{"sessionID", session}, {"agent", agent}});
+                });
+}
+
+void OpenCodeClient::selectModel(const QString &providerID, const QString &modelID, const QString &variant)
+{
+    if (!isV2() || m_sessionId.isEmpty() || modelID.isEmpty())
+        return;
+    QJsonObject model{{"id", modelID}, {"providerID", providerID}};
+    if (!variant.isEmpty())
+        model.insert("variant", variant);
+    const QString session = m_sessionId;
+    postCommand(QStringLiteral("/api/session/%1/model").arg(session), QJsonObject{{"model", model}},
+                tr("Switching the model"), [this, session, model] {
+                    emit serverEvent(QStringLiteral("session.model.selected"),
+                                     QJsonObject{{"sessionID", session}, {"model", model}});
+                });
 }
 
 void OpenCodeClient::setConnected(bool c)
