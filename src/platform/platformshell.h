@@ -19,8 +19,10 @@ public:
     virtual void prepareWindow(QQuickWindow *window) = 0;
 
     // Show + focus the window. If atCursor, place it near the mouse cursor (best effort).
-    // The window property "maxHeight" (int, optional) is the tallest size the window can grow to;
-    // implementations should keep that much room on screen.
+    // The window properties "contentHeight" and "maxContentHeight" (ints, optional) describe the
+    // visible card: it starts at the window's top edge and the prompt box sits contentHeight below
+    // it. Implementations should put the prompt just below the cursor and keep room for
+    // maxContentHeight so the card never grows off the screen.
     virtual void showAtCursor(QQuickWindow *window, bool atCursor) = 0;
 
     static PlatformShell *create(QObject *parent = nullptr);

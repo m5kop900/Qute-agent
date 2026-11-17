@@ -19,12 +19,14 @@ void GenericShell::showAtCursor(QQuickWindow *window, bool atCursor)
         if (!screen)
             screen = QGuiApplication::primaryScreen();
         const QRect area = screen->availableGeometry();
-        const int maxH = qMax(window->property("maxHeight").toInt(), window->height());
+        const int contentH = window->property("contentHeight").toInt();
+        const int maxContentH = window->property("maxContentHeight").toInt();
 
         int x = cur.x() - 20;
-        int y = cur.y() - 20;
+        int y = cur.y() + 20 - contentH;      // prompt box just below the cursor; the card grows downward
         x = qBound(area.left(), x, qMax(area.left(), area.right() - window->width()));
-        y = qBound(area.top(), y, qMax(area.top(), area.bottom() - maxH));
+        // Keep room for the tallest card so a reply never grows off the screen.
+        y = qBound(area.top(), y, qMax(area.top(), area.bottom() - maxContentH));
         window->setPosition(x, y);
     }
     window->show();

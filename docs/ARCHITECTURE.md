@@ -40,8 +40,14 @@ context properties `store`, `conversation` and `catalog` and never sees JSON.
 `offline idle thinking working waiting done error`. Packs may omit states; the manifest `fallback` map decides.
 
 ## Window sizing
-The OS window has 3 discrete heights (prompt only / reply / long reply). The panel inside animates smoothly.
-Reason: continuous native resize is janky on Wayland. The window is only as big as its content, so no click-through hacks are needed.
+The OS window has one fixed maximum size (it never resizes: continuous native resize is janky on Wayland).
+Inside it the card is anchored to the **top edge** and its height animates between 3 levels (prompt only /
+reply / long reply), growing downward. Everything below the card is transparent, and the window's input
+region is limited to the card (plus an open dropdown), so clicks there pass through to the app underneath.
+The card must stay flush with the window top: the compositor stops an interactive window move once the
+window's top edge reaches the screen top, so invisible space above the card would be a hard limit for
+dragging the overlay up. Placement (`contentHeight` / `maxContentHeight` window properties) puts the prompt
+box just below the cursor and keeps room for the tallest card.
 
 ## Settings split
 `AppConfig` is a static-lib class used by both executables. Both MUST use `setApplicationName("qute")` so the config path matches.

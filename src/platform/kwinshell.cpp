@@ -26,7 +26,6 @@ static const char kPlaceScript[] = R"JS(
         if (String(w.caption) !== "qute-overlay")
             continue;
         var g = w.frameGeometry;
-        var maxH = Math.max(%MAXH%, g.height);
 
         // Multi-monitor: anchor to the screen that actually holds the cursor, then clamp
         // the window to that screen's working area. Resolving the area from the window
@@ -40,11 +39,13 @@ static const char kPlaceScript[] = R"JS(
             area = workspace.virtualScreenGeometry;   // cursor outside every output
 
         var x = Math.round(cur.x - 20);
-        // The prompt box (the panel's bottom edge, at window y = %ANCHOR%) sits just below the cursor and the
-        // panel grows upward from it, so the prompt never moves when a reply appears.
-        var y = Math.round(cur.y + 20 - %ANCHOR%);
+        // The card's bottom edge (the prompt box, %CONTENTH% px below the window top) sits just below the
+        // cursor. The card is anchored to the window top and grows downward, so the visible top edge is
+        // always the window's top edge - no invisible window space above it to limit dragging.
+        var y = Math.round(cur.y + 20 - %CONTENTH%);
         x = Math.max(area.x, Math.min(x, area.x + area.width - g.width));
-        y = Math.max(area.y, Math.min(y, area.y + area.height - maxH));
+        // Keep room for the tallest card (%MAXCONTENTH%) so a reply never grows off the screen.
+        y = Math.max(area.y, Math.min(y, area.y + area.height - %MAXCONTENTH%));
         w.frameGeometry = { x: x, y: y, width: g.width, height: g.height };
         w.keepAbove = true;
         w.skipTaskbar = true;
@@ -67,24 +68,24 @@ void KWinShell::showAtCursor(QQuickWindow *window, bool atCursor)
     window->show();
     window->requestActivate();
 #ifdef QUTE_HAVE_DBUS
-    const int maxH = qMax(window->property("maxHeight").toInt(), window->height());
-    const int anchorY = window->property("anchorY").toInt();
+    const int contentH = window->property("contentHeight").toInt();
+    const int maxContentH = window->property("maxContentHeight").toInt();
     // KWin must have mapped the window (with its real size) before the script can move it.
-    QTimer::singleShot(80, this, [this, maxH, anchorY, atCursor] {
+    QTimer::singleShot(80, this, [this, contentH, maxContentH, atCursor] {
         if (atCursor)
-            runPlacementScript(maxH, anchorY);
+            runPlacementScript(contentH, maxContentH);
     });
 #else
     Q_UNUSED(atCursor)
 #endif
 }
 
-void KWinShell::runPlacementScript(int maxHeight, int anchorY)
+void KWinShell::runPlacementScript(int contentHeight, int maxContentHeight)
 {
 #ifdef QUTE_HAVE_DBUS
     QString js = QString::fromUtf8(kPlaceScript);
-    js.replace(QStringLiteral("%MAXH%"), QString::number(maxHeight));
-    js.replace(QStringLiteral("%ANCHOR%"), QString::number(anchorY));
+    js.replace(QStringLiteral("%CONTENTH%"), QString::number(contentHeight));
+    js.replace(QStringLiteral("%MAXCONTENTH%"), QString::number(maxContentHeight));
 
     const QString path = QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation))
                              .filePath(QStringLiteral("qute-kwin-place.js"));
@@ -117,7 +118,7 @@ void KWinShell::runPlacementScript(int maxHeight, int anchorY)
         s.call(QStringLiteral("unloadScript"), name);
     });
 #else
-    Q_UNUSED(maxHeight)
-    Q_UNUSED(anchorY)
+    Q_UNUSED(contentHeight)
+    Q_UNUSED(maxContentHeight)
 #endif
 }
