@@ -20,8 +20,16 @@ ListView {
     boundsBehavior: ListView.StopAtBounds
     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
+    // Follow the newest item while the list grows, while the card animates its height (the list starts at
+    // height 0 on the first prompt), and after a refresh. Scrolling up by hand turns following off.
+    function followEnd() {
+        stickToBottom = true;
+        Qt.callLater(view.positionViewAtEnd);
+    }
+
     onCountChanged: if (stickToBottom) Qt.callLater(view.positionViewAtEnd)
     onContentHeightChanged: if (stickToBottom) Qt.callLater(view.positionViewAtEnd)
+    onHeightChanged: if (stickToBottom) Qt.callLater(view.positionViewAtEnd)
     onMovementEnded: stickToBottom = atYEnd
 
     delegate: DelegateChooser {

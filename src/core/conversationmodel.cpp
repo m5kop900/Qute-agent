@@ -475,6 +475,21 @@ void ConversationModel::applyMessages(const QJsonArray &asc)
             QString text = textOfParts(parts);
             if (text.isEmpty() && message.value("content").isString())   // some servers send plain-string content
                 text = message.value("content").toString().trimmed();
+            if (text.isEmpty())                                          // flat projection: {type:"user", text}
+                text = message.value("text").toString().trimmed();
+            if (text.isEmpty()) {                                        // parts with a text field of another type
+                QStringList loose;
+                for (const QJsonValue &pv : parts) {
+                    const QJsonObject p = pv.toObject();
+                    const QString pt = p.value("type").toString();
+                    if (p.value("synthetic").toBool() || pt == QLatin1String("tool") || pt == QLatin1String("reasoning"))
+                        continue;
+                    const QString t = p.value("text").toString();
+                    if (!t.isEmpty())
+                        loose << t;
+                }
+                text = loose.join(QStringLiteral("\n\n")).trimmed();
+            }
             if (!text.isEmpty())
                 out << Item{QStringLiteral("user"), QStringLiteral("user:%1").arg(msgId), text, {}, {}, {}, {}, false};
         } else if (role == QLatin1String("assistant")) {
@@ -513,8 +528,65 @@ void ConversationModel::applyMessages(const QJsonArray &asc)
     for (const Item &p : std::as_const(pending))
         out << p;
 
-    beginResetModel();
-    m_items = out;
-    endResetModel();
-    emit countChanged();
+    // Local items the projection cannot contain yet must survive a refresh: prompts sent but not echoed
+    // back by the server, and notices (slash-command feedback). Wiping them made messages vanish.
+    QSet<QString> claimed;
+    QList<Item> keptLocal;
+    for (const Item &lu : std::as_const(m_items)) {
+        if (lu.kind == QLatin1String("user") && lu.id.startsWith(QLatin1String("user:local-"))) {
+            bool echoed = false;
+            for (const Item &s : std::as_const(out)) {
+                if (s.kind == QLatin1String("user") && s.text == lu.text && !claimed.contains(s.id)) {
+                    claimed << s.id;
+                    echoed = true;
+                    break;
+                }
+            }
+            if (!echoed)
+                keptLocal << lu;
+        } else if (lu.kind == QLatin1String("notice")) {
+            keptLocal << lu;
+        }
+    }
+    // Local prompts and notices go after the server history, before the pending requests.
+    QList<Item> merged;
+    for (const Item &it : std::as_const(out))
+        if (!(it.kind == QLatin1String("request") && it.status == QLatin1String("pending")))
+            merged << it;
+    merged << keptLocal;
+    for (const Item &p : std::as_const(pending))
+        merged << p;
+    out = merged;
+
+    // Rows that did not change keep their place. An in-place update only appends or edits rows; a full
+    // model reset makes the list jump to its top, so it is used only when the old rows are not a prefix.
+    bool prefixKept = out.size() >= m_items.size();
+    for (int i = 0; prefixKept && i < m_items.size(); ++i)
+        prefixKept = m_items.at(i).kind == out.at(i).kind && m_items.at(i).id == out.at(i).id;
+
+    if (!prefixKept) {
+        beginResetModel();
+        m_items = out;
+        endResetModel();
+        emit countChanged();
+        return;
+    }
+    for (int i = 0; i < m_items.size(); ++i) {
+        const Item &n = out.at(i);
+        const Item &c = m_items.at(i);
+        if (c.text != n.text || c.name != n.name || c.status != n.status || c.requestKind != n.requestKind
+            || c.detail != n.detail) {
+            m_items[i] = n;
+            touch(i);
+        }
+    }
+    if (out.size() > m_items.size()) {
+        const int first = m_items.size();
+        const int last = out.size() - 1;
+        beginInsertRows({}, first, last);
+        for (int i = first; i <= last; ++i)
+            m_items.append(out.at(i));
+        endInsertRows();
+        emit countChanged();
+    }
 }

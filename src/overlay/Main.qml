@@ -135,6 +135,7 @@ Window {
                 }
 
                 ConversationView {
+                    id: chat
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     visible: win.desiredLevel > 0
@@ -224,7 +225,7 @@ Window {
                     s: win.s
                     enabled: client.connected
                     offText: client.lastError !== "" ? qsTr("opencode is not available") : qsTr("Connecting to opencode…")
-                    onSubmitted: function (text) { client.sendPrompt(text) }
+                    onSubmitted: function (text) { chat.followEnd(); client.sendPrompt(text) }
                     onCommand: function (text) { win.runCommand(text) }
                 }
             }

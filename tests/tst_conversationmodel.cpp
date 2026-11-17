@@ -178,6 +178,38 @@ private slots:
         m.applyMessages(loadMessages(messagesPath));
         QCOMPARE(m.rowCount(), 4);      // user + text + tool + text
     }
+
+    void unechoedPromptSurvivesRefresh()
+    {
+        ConversationModel m;
+        m.applyUserPrompt(QStringLiteral("still typing on the server"));
+        m.applyMessages(QJsonArray{});
+        QCOMPARE(m.rowCount(), 1);
+        QCOMPARE(m.items().first().text, QString("still typing on the server"));
+    }
+
+    void echoedPromptIsNotDuplicated()
+    {
+        ConversationModel m;
+        m.applyUserPrompt(QStringLiteral("run the tests"));
+        const QString messagesPath = QFINDTESTDATA("fixtures/v2-turn-messages.json");
+        m.applyMessages(loadMessages(messagesPath));
+        int users = 0;
+        for (const ConversationModel::Item &it : m.items())
+            if (it.kind == QLatin1String("user"))
+                ++users;
+        QCOMPARE(users, 1);
+    }
+
+    void flatUserTextIsKept()
+    {
+        ConversationModel m;
+        QJsonArray msgs;
+        msgs.append(QJsonObject{{"id", "msg_f1"}, {"type", "user"}, {"text", "flat shape"}});
+        m.applyMessages(msgs);
+        QCOMPARE(m.rowCount(), 1);
+        QCOMPARE(m.items().first().text, QString("flat shape"));
+    }
 };
 
 QTEST_GUILESS_MAIN(TstConversationModel)
