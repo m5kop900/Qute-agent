@@ -28,6 +28,9 @@ public:
     // Limits mouse input to a rectangle of the window (the window keeps its size, the rest of it
     // is transparent and lets clicks pass through). Empty w/h clears the limit.
     Q_INVOKABLE void setInputRegion(int x, int y, int w, int h);
+    // Ask the platform shell to size the window for a card of `contentHeight` px, keeping the card's
+    // bottom edge (the prompt box) where it is on screen. `dropRoom` px of empty room stay below it.
+    Q_INVOKABLE void resizeToContent(int contentHeight, int dropRoom);
     // Locates and starts qute-settings; also used by `qute settings`.
     static bool launchSettingsApp();
 

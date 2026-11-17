@@ -7,6 +7,7 @@
 #endif
 
 #include <QGuiApplication>
+#include <QQuickWindow>
 #include <QtGlobal>
 
 #if defined(QUTE_HAVE_DBUS)
@@ -34,4 +35,12 @@ PlatformShell *PlatformShell::create(QObject *parent)
     // Windows, X11 desktops with another WM (XFCE, ...), and anything unknown.
     // TODO(port): GNOME Wayland needs a GNOME Shell extension (see docs/PLATFORMS.md).
     return new GenericShell(parent);
+}
+
+void PlatformShell::resizeContent(QQuickWindow *window, int contentHeight, int dropRoom)
+{
+    // Default: resize in place and keep the card's bottom edge fixed by moving the top edge.
+    const QRect g = window->geometry();
+    const int cardBottom = g.y() + g.height() - dropRoom;
+    window->setGeometry(g.x(), cardBottom - contentHeight, g.width(), contentHeight + dropRoom);
 }

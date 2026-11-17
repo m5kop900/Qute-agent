@@ -49,6 +49,13 @@ void OverlayController::setInputRegion(int x, int y, int w, int h)
     m_window->setMask(w > 0 && h > 0 ? QRegion(x, y, w, h) : QRegion());
 }
 
+void OverlayController::resizeToContent(int contentHeight, int dropRoom)
+{
+    if (!m_window || contentHeight <= 0)
+        return;
+    m_shell->resizeContent(m_window, contentHeight, dropRoom);
+}
+
 void OverlayController::hide()
 {
     if (m_window)

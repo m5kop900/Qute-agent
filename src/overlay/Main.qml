@@ -14,12 +14,11 @@ Window {
     readonly property string st: agent.stateName
     readonly property bool busy: st === "thinking" || st === "working" || st === "waiting"
 
-    // 0 = prompt only, 1 = reply visible, 2 = long reply. Only the card inside changes height; the OS
-    // window keeps its maximum size (continuous native resize is janky on Wayland/KWin). The card is
-    // anchored to the TOP of the window and grows downward: the compositor stops an interactive move
-    // once the window's top edge reaches the screen top, so a transparent strip above the card would
-    // become a hard limit for dragging the overlay up. Clicks in the slack below the card pass through
-    // via the input region (see updateInputRegion).
+    // 0 = prompt only, 1 = reply visible, 2 = long reply. The card is anchored to the window BOTTOM and
+    // grows UPWARD: the prompt box never moves when a reply appears. The OS window is resized to match,
+    // so the window top edge is always the card's top edge - the compositor stops an interactive window
+    // move once its top edge reaches the screen top, so invisible space above the card would be a hard
+    // limit for dragging the overlay up. Clicks below the card pass through (see updateInputRegion).
     readonly property int desiredLevel: {
         if (client.responseText.length > 500 || conversation.count > 4) return 2
         if (client.responseText.length > 0 || busy || conversation.count > 0) return 1
@@ -27,17 +26,24 @@ Window {
         return 0
     }
     readonly property var panelHeights: [140, 250, 430]
-    readonly property var windowHeights: [190, 350, 530]
-    // Fixed OS window size; only the card inside changes height (see above).
-    readonly property int maxHeight: Math.round(windowHeights[2] * s)
-    // Card geometry in window coordinates. The card starts at contentTop and its bottom edge is the
-    // prompt box; contentHeight/maxContentHeight are read by the C++ platform shell for placement.
+    // Empty room kept inside the window below the card: the menu strip dropdowns open into it.
+    readonly property int dropRoom: Math.round(200 * s)
+    // Requested card geometry in window coordinates. The card's bottom edge is the prompt box;
+    // contentHeight/dropRoom are read by the C++ platform shell, which resizes and moves the window
+    // (the compositor must do it: a client-side resize is center-anchored and would shift the card).
     readonly property real contentTop: Math.round(10 * s)
     readonly property int contentHeight: Math.round(contentTop + panelHeights[desiredLevel] * s)
-    readonly property int maxContentHeight: Math.round(contentTop + panelHeights[2] * s)
+    // The card grows upward from cardBottom. Until the window has been resized, never draw it taller
+    // than the window can show, so nothing is ever clipped at the top.
+    readonly property real cardBottom: win.height - dropRoom
+    readonly property int cardHeight: Math.min(Math.round(panelHeights[desiredLevel] * s),
+                                               Math.max(0, Math.round(cardBottom - contentTop)))
 
     width: Math.round(560 * s)
-    height: maxHeight
+    // The height is applied by the platform shell (see contentHeight/dropRoom); this only gives the
+    // surface a sensible size before the first placement.
+    // A new level (or another UI scale) needs a window tall enough for the card: ask the shell for it.
+    onContentHeightChanged: controller.resizeToContent(win.contentHeight, win.dropRoom)
 
     Theme { id: appTheme; cfg: config }
 
@@ -46,8 +52,8 @@ Window {
     function updateInputRegion() {
         // Use the panel's real height, not the target level's, so the region matches what is drawn
         // during the 220 ms height animation as well.
-        let top = win.contentTop
-        let bottom = win.contentTop + panel.height
+        let top = win.cardBottom - panel.height
+        let bottom = win.cardBottom
         if (menuStrip.popupOpen) {
             // A dropdown can open above or below the strip: the clickable area covers it either way.
             const stripY = menuStrip.mapToItem(win.contentItem, 0, 0).y
@@ -86,9 +92,8 @@ Window {
             id: sprite
             width: Math.round(128 * win.s)
             height: width
-            // Sits on the prompt box's bottom edge, as before: the card grows downward, so the sprite
-            // follows the card's bottom edge instead of staying pinned to the window top.
-            y: win.contentTop + panel.height - height
+            // Sits on the prompt box's bottom edge, which stays put while the card grows upward.
+            y: win.cardBottom - height
             stateName: win.st
         }
 
@@ -103,9 +108,9 @@ Window {
         Rectangle {
             id: panel
             x: sprite.width + Math.round(4 * win.s)
-            y: win.contentTop     // grows downward; the top edge stays at the window top
+            y: win.cardBottom - height   // grows upward; the bottom edge (prompt box) stays put
             width: parent.width - x - Math.round(6 * win.s)
-            height: Math.round(win.panelHeights[win.desiredLevel] * win.s)
+            height: win.cardHeight
             radius: Math.round(16 * win.s)
             color: appTheme.panel
             border.width: 1
@@ -256,5 +261,8 @@ Window {
         }
     }
 
-    Component.onCompleted: updateInputRegion()
+    Component.onCompleted: {
+        win.height = win.contentHeight + win.dropRoom
+        updateInputRegion()
+    }
 }

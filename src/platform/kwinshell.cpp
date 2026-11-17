@@ -17,6 +17,10 @@
 //   workspace.clientArea(KWin.PlacementArea, output, desktop) -> QRect (multi-screen aware),
 //   window.frameGeometry (must be assigned as a COMPLETE {x,y,width,height} object), window.keepAbove ...
 // If placement misbehaves, debug with:  journalctl -f QT_CATEGORY=kwin_scripting  (or print() output)
+//
+// The card's bottom edge is the prompt box. %CONTENTH% is the card height (window top edge = card top
+// edge, so a transparent strip can never limit dragging the overlay up) and %DROPROOM% is empty room
+// below it for the menu strip dropdowns.
 static const char kPlaceScript[] = R"JS(
 (function () {
     var cur = workspace.cursorPos;
@@ -25,7 +29,6 @@ static const char kPlaceScript[] = R"JS(
         var w = wins[i];
         if (String(w.caption) !== "qute-overlay")
             continue;
-        var g = w.frameGeometry;
 
         // Multi-monitor: anchor to the screen that actually holds the cursor, then clamp
         // the window to that screen's working area. Resolving the area from the window
@@ -38,20 +41,35 @@ static const char kPlaceScript[] = R"JS(
         else
             area = workspace.virtualScreenGeometry;   // cursor outside every output
 
+        var ch = %CONTENTH%;
         var x = Math.round(cur.x - 20);
-        // The card's bottom edge (the prompt box, %CONTENTH% px below the window top) sits just below the
-        // cursor. The card is anchored to the window top and grows downward, so the visible top edge is
-        // always the window's top edge - no invisible window space above it to limit dragging.
-        var y = Math.round(cur.y + 20 - %CONTENTH%);
-        x = Math.max(area.x, Math.min(x, area.x + area.width - g.width));
-        // Keep room for the tallest card (%MAXCONTENTH%) so a reply never grows off the screen.
-        y = Math.max(area.y, Math.min(y, area.y + area.height - %MAXCONTENTH%));
-        w.frameGeometry = { x: x, y: y, width: g.width, height: g.height };
+        // The prompt box (the card's bottom edge) sits just below the cursor.
+        var y = Math.round(cur.y + 20 - ch);
+        x = Math.max(area.x, Math.min(x, area.x + area.width - %WIDTH%));
+        // Clamp on the card only: the room below it is invisible and may hang over the screen edge.
+        y = Math.max(area.y, Math.min(y, area.y + area.height - ch));
+        w.frameGeometry = { x: x, y: y, width: %WIDTH%, height: ch + %DROPROOM% };
         w.keepAbove = true;
         w.skipTaskbar = true;
         w.skipPager = true;
         w.skipSwitcher = true;
         workspace.activeWindow = w;
+    }
+})();
+)JS";
+
+// Resize for a new card level: the prompt box stays where it is on screen and the card grows upward.
+static const char kResizeScript[] = R"JS(
+(function () {
+    var wins = workspace.windowList();
+    for (var i = 0; i < wins.length; i++) {
+        var w = wins[i];
+        if (String(w.caption) !== "qute-overlay")
+            continue;
+        var g = w.frameGeometry;
+        var cardBottom = g.y + g.height - %DROPROOM%;
+        w.frameGeometry = { x: g.x, y: cardBottom - %CONTENTH%, width: g.width,
+                            height: %CONTENTH% + %DROPROOM% };
     }
 })();
 )JS";
@@ -68,34 +86,58 @@ void KWinShell::showAtCursor(QQuickWindow *window, bool atCursor)
     window->show();
     window->requestActivate();
 #ifdef QUTE_HAVE_DBUS
+    const int width = window->width();
     const int contentH = window->property("contentHeight").toInt();
-    const int maxContentH = window->property("maxContentHeight").toInt();
+    const int dropRoom = window->property("dropRoom").toInt();
     // KWin must have mapped the window (with its real size) before the script can move it.
-    QTimer::singleShot(80, this, [this, contentH, maxContentH, atCursor] {
+    QTimer::singleShot(80, this, [this, width, contentH, dropRoom, atCursor] {
         if (atCursor)
-            runPlacementScript(contentH, maxContentH);
+            runPlacementScript(width, contentH, dropRoom);
     });
 #else
     Q_UNUSED(atCursor)
 #endif
 }
 
-void KWinShell::runPlacementScript(int contentHeight, int maxContentHeight)
+void KWinShell::resizeContent(QQuickWindow *window, int contentHeight, int dropRoom)
+{
+#ifdef QUTE_HAVE_DBUS
+    Q_UNUSED(window)
+    QString js = QString::fromUtf8(kResizeScript);
+    js.replace(QStringLiteral("%CONTENTH%"), QString::number(contentHeight));
+    js.replace(QStringLiteral("%DROPROOM%"), QString::number(dropRoom));
+    runScript(QStringLiteral("qute-resize"), js);
+#else
+    PlatformShell::resizeContent(window, contentHeight, dropRoom);
+#endif
+}
+
+void KWinShell::runPlacementScript(int width, int contentHeight, int dropRoom)
 {
 #ifdef QUTE_HAVE_DBUS
     QString js = QString::fromUtf8(kPlaceScript);
+    js.replace(QStringLiteral("%WIDTH%"), QString::number(width));
     js.replace(QStringLiteral("%CONTENTH%"), QString::number(contentHeight));
-    js.replace(QStringLiteral("%MAXCONTENTH%"), QString::number(maxContentHeight));
+    js.replace(QStringLiteral("%DROPROOM%"), QString::number(dropRoom));
+    runScript(QStringLiteral("qute-place"), js);
+#else
+    Q_UNUSED(width)
+    Q_UNUSED(contentHeight)
+    Q_UNUSED(dropRoom)
+#endif
+}
 
+void KWinShell::runScript(const QString &name, QString js)
+{
+#ifdef QUTE_HAVE_DBUS
     const QString path = QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation))
-                             .filePath(QStringLiteral("qute-kwin-place.js"));
+                             .filePath(QStringLiteral("qute-kwin-%1.js").arg(name));
     QFile f(path);
     if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
         return;
     f.write(js.toUtf8());
     f.close();
 
-    const QString name = QStringLiteral("qute-place");
     QDBusInterface scripting(QStringLiteral("org.kde.KWin"), QStringLiteral("/Scripting"),
                              QStringLiteral("org.kde.kwin.Scripting"));
     if (!scripting.isValid())
@@ -118,7 +160,7 @@ void KWinShell::runPlacementScript(int contentHeight, int maxContentHeight)
         s.call(QStringLiteral("unloadScript"), name);
     });
 #else
-    Q_UNUSED(contentHeight)
-    Q_UNUSED(maxContentHeight)
+    Q_UNUSED(name)
+    Q_UNUSED(js)
 #endif
 }
