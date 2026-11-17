@@ -30,5 +30,9 @@ public:
     // Default: a plain client-side resize (position-anchored platforms override it if they can).
     virtual void resizeContent(QQuickWindow *window, int contentHeight, int dropRoom);
 
+    // Called once the window is at its final position (or cannot be moved at all): shows its content.
+    // The window stays content-hidden from the moment it is first shown until this runs.
+    static void reveal(QQuickWindow *window);
+
     static PlatformShell *create(QObject *parent = nullptr);
 };

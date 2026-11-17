@@ -10,6 +10,9 @@ Window {
     visible: false
     color: "transparent"
 
+    // Set by PlatformShell::reveal() once the window is at its final position.
+    property bool placed: false
+
     readonly property real s: config.scale
     readonly property string st: agent.stateName
     readonly property bool busy: st === "thinking" || st === "working" || st === "waiting"
@@ -87,6 +90,26 @@ Window {
 
     Item {
         anchors.fill: parent
+        // The window is transparent, so hiding its content hides the window. It stays hidden until the
+        // platform shell has moved it to the cursor (PlatformShell::reveal), so it never shows at the
+        // compositor's default spot first.
+        opacity: win.placed ? 1 : 0
+
+        // Summon ring: a soft accent circle that flashes out from behind the mascot.
+        Rectangle {
+            id: summonRing
+            width: Math.round(64 * win.s)
+            height: width
+            radius: width / 2
+            x: sprite.x + sprite.width / 2 - width / 2
+            y: sprite.y + sprite.height / 2 - height / 2
+            color: "transparent"
+            border.width: Math.max(1, Math.round(2 * win.s))
+            border.color: appTheme.accent
+            opacity: 0
+            scale: 1
+            transformOrigin: Item.Center
+        }
 
         SpriteView {
             id: sprite
@@ -95,6 +118,35 @@ Window {
             // Sits on the prompt box's bottom edge, which stays put while the card grows upward.
             y: win.cardBottom - height
             stateName: win.st
+            scale: 1
+            rotation: 0
+            opacity: 1
+            transformOrigin: Item.Center
+        }
+
+        // Sparkles burst out of the mascot on summon. Each one plays its own short path (see play()).
+        Repeater {
+            id: sparkles
+            model: 7
+            delegate: Text {
+                id: spark
+                required property int index
+                property real t: 0
+                readonly property real ang: index / 7 * 2 * Math.PI - Math.PI / 2
+                readonly property real dist: Math.round(64 * win.s)
+                x: sprite.x + sprite.width / 2 - width / 2 + Math.cos(ang) * dist * t
+                y: sprite.y + sprite.height / 2 - height / 2 + Math.sin(ang) * dist * t
+                opacity: Math.sin(Math.PI * t)
+                text: ["\u2726", "\u2661", "\u2727", "\u273f", "\u2605", "\u2661", "\u2727"][index]
+                color: index % 2 ? "#ff9ccc" : appTheme.accent
+                font.pixelSize: Math.round(14 * win.s)
+                function play() { burst.restart() }
+                SequentialAnimation {
+                    id: burst
+                    PauseAnimation { duration: spark.index * 14 }
+                    NumberAnimation { target: spark; property: "t"; from: 0; to: 1; duration: 460; easing.type: Easing.OutCubic }
+                }
+            }
         }
 
         // Hold the mouse on the sprite and drag: the compositor moves the whole overlay.
@@ -113,6 +165,7 @@ Window {
             height: win.cardHeight
             radius: Math.round(16 * win.s)
             color: appTheme.panel
+            transform: Translate { id: panelShift; y: 0 }
             border.width: 1
             border.color: appTheme.border
             Behavior on height { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
@@ -230,6 +283,46 @@ Window {
                 }
             }
         }
+    }
+
+    // Summon: the mascot pops in with a little overshoot and wiggle, a ring flashes behind it, sparkles
+    // burst out, and the card slides up. Runs each time the window is shown at the cursor (placed goes
+    // true), takes about 400 ms, and never touches the prompt: typing works while it plays.
+    onPlacedChanged: if (placed) summon()
+
+    function summon() {
+        summonAnim.restart()
+        for (let i = 0; i < sparkles.count; ++i)
+            sparkles.itemAt(i).play()
+    }
+
+    SequentialAnimation {
+        id: summonAnim
+        ScriptAction {
+            script: {
+                sprite.scale = 0.2
+                sprite.rotation = 0
+                sprite.opacity = 0
+                summonRing.scale = 0.4
+                summonRing.opacity = 0.9
+                panel.opacity = 0
+                panelShift.y = 14
+            }
+        }
+        ParallelAnimation {
+            NumberAnimation { target: sprite; property: "scale"; to: 1.12; duration: 240; easing.type: Easing.OutBack; easing.overshoot: 2.2 }
+            NumberAnimation { target: sprite; property: "opacity"; to: 1; duration: 140; easing.type: Easing.OutQuad }
+            SequentialAnimation {
+                NumberAnimation { target: sprite; property: "rotation"; to: -12; duration: 110; easing.type: Easing.OutQuad }
+                NumberAnimation { target: sprite; property: "rotation"; to: 9; duration: 120; easing.type: Easing.InOutQuad }
+                NumberAnimation { target: sprite; property: "rotation"; to: 0; duration: 160; easing.type: Easing.OutElastic; easing.amplitude: 1.0; easing.period: 0.4 }
+            }
+            NumberAnimation { target: summonRing; property: "scale"; to: 2.6; duration: 380; easing.type: Easing.OutCubic }
+            NumberAnimation { target: summonRing; property: "opacity"; to: 0; duration: 380; easing.type: Easing.OutQuad }
+            NumberAnimation { target: panel; property: "opacity"; to: 1; duration: 220; easing.type: Easing.OutCubic }
+            NumberAnimation { target: panelShift; property: "y"; to: 0; duration: 260; easing.type: Easing.OutBack }
+        }
+        NumberAnimation { target: sprite; property: "scale"; to: 1; duration: 120; easing.type: Easing.InOutQuad }
     }
 
     // Slash commands typed in the prompt box. They run in Qute, not on the server.

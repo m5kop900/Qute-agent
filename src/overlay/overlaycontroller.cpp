@@ -37,6 +37,10 @@ void OverlayController::show()
 {
     if (!m_window)
         return;
+    // Hidden until the shell has moved the window to the cursor. Only a window that was not on screen
+    // needs this: an already visible one is simply moved, and nothing flashes.
+    if (!m_window->isVisible())
+        m_window->setProperty("placed", false);
     m_focusGrace.start();
     emit shown();                                     // QML resizes for the current state BEFORE placement
     m_shell->showAtCursor(m_window, m_config->placeAtCursor());

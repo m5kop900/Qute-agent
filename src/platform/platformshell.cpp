@@ -37,6 +37,12 @@ PlatformShell *PlatformShell::create(QObject *parent)
     return new GenericShell(parent);
 }
 
+void PlatformShell::reveal(QQuickWindow *window)
+{
+    if (window)
+        window->setProperty("placed", true);
+}
+
 void PlatformShell::resizeContent(QQuickWindow *window, int contentHeight, int dropRoom)
 {
     // Default: resize in place and keep the card's bottom edge fixed by moving the top edge.

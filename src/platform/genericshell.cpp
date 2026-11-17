@@ -32,4 +32,5 @@ void GenericShell::showAtCursor(QQuickWindow *window, bool atCursor)
     window->show();
     window->raise();
     window->requestActivate();
+    reveal(window);     // positioned before show(), so the content can show right away
 }

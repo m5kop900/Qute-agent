@@ -1,5 +1,6 @@
 #include "kwinshell.h"
 
+#include <QPointer>
 #include <QQuickWindow>
 #include <QTimer>
 
@@ -85,17 +86,27 @@ void KWinShell::showAtCursor(QQuickWindow *window, bool atCursor)
 {
     window->show();
     window->requestActivate();
+    if (!atCursor) {
+        reveal(window);
+        return;
+    }
 #ifdef QUTE_HAVE_DBUS
     const int width = window->width();
     const int contentH = window->property("contentHeight").toInt();
     const int dropRoom = window->property("dropRoom").toInt();
+    QPointer<QQuickWindow> w(window);
     // KWin must have mapped the window (with its real size) before the script can move it.
-    QTimer::singleShot(80, this, [this, width, contentH, dropRoom, atCursor] {
-        if (atCursor)
-            runPlacementScript(width, contentH, dropRoom);
+    QTimer::singleShot(80, this, [this, w, width, contentH, dropRoom] {
+        if (w)
+            runPlacementScript(w.data(), width, contentH, dropRoom);   // reveals the window when done
+    });
+    // Safety net: if KWin never answers, the window must still appear (at the compositor's spot).
+    QTimer::singleShot(600, this, [w] {
+        if (w)
+            reveal(w.data());
     });
 #else
-    Q_UNUSED(atCursor)
+    reveal(window);
 #endif
 }
 
@@ -112,19 +123,20 @@ void KWinShell::resizeContent(QQuickWindow *window, int contentHeight, int dropR
 #endif
 }
 
-void KWinShell::runPlacementScript(int width, int contentHeight, int dropRoom)
+void KWinShell::runPlacementScript(QQuickWindow *window, int width, int contentHeight, int dropRoom)
 {
 #ifdef QUTE_HAVE_DBUS
     QString js = QString::fromUtf8(kPlaceScript);
     js.replace(QStringLiteral("%WIDTH%"), QString::number(width));
     js.replace(QStringLiteral("%CONTENTH%"), QString::number(contentHeight));
     js.replace(QStringLiteral("%DROPROOM%"), QString::number(dropRoom));
-    runScript(QStringLiteral("qute-place"), js);
+    runScript(QStringLiteral("qute-place"), js);   // blocks until KWin has run the script
 #else
     Q_UNUSED(width)
     Q_UNUSED(contentHeight)
     Q_UNUSED(dropRoom)
 #endif
+    reveal(window);
 }
 
 void KWinShell::runScript(const QString &name, QString js)

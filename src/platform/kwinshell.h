@@ -15,7 +15,7 @@ public:
     void resizeContent(QQuickWindow *window, int contentHeight, int dropRoom) override;
 
 private:
-    void runPlacementScript(int width, int contentHeight, int dropRoom);
+    void runPlacementScript(QQuickWindow *window, int width, int contentHeight, int dropRoom);
     // Writes `js` to a temp file, loads + runs it as KWin script `name`, then unloads it.
     void runScript(const QString &name, QString js);
 };
