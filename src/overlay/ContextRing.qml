@@ -10,10 +10,12 @@ Item {
     property int percent: -1
     property real tokens: 0
     property real limit: 0
+    property real cost: -1          // session cost when the server reports one, otherwise -1
 
+    // Warning levels from the roadmap (F2.4): amber from 80 %, red from 95 %.
     readonly property color ringColor: percent < 0 ? theme.border
-                                                : percent >= 90 ? "#e5484d"
-                                                : percent >= 70 ? "#e8a33d"
+                                                : percent >= 95 ? "#e5484d"
+                                                : percent >= 80 ? "#e8a33d"
                                                 : theme.accent
 
     implicitWidth: Math.round(22 * s)
@@ -69,7 +71,7 @@ Item {
         text: root.percent >= 0 ? String(root.percent) : "–"
         color: root.percent < 0 ? root.theme.textDim : root.theme.text
         font.pixelSize: Math.round(7.5 * root.s)
-        font.bold: root.percent >= 70
+        font.bold: root.percent >= 80
     }
 
     HoverHandler { id: hover }
@@ -80,8 +82,8 @@ Item {
         shown: hover.hovered
         delayMs: 150
         text: root.percent >= 0
-              ? qsTr("Context: %1% used\n%2 of %3 tokens")
-                    .arg(root.percent).arg(root.fmt(root.tokens)).arg(root.fmt(root.limit))
+              ? qsTr("Context: %1% used\n%2 of %3 tokens").arg(root.percent).arg(root.fmt(root.tokens)).arg(root.fmt(root.limit))
+                + (root.cost >= 0 ? "\n" + qsTr("Session cost: %1").arg(root.cost.toFixed(4)) : "")
               : (root.tokens > 0 ? qsTr("%1 tokens used\ncontext limit unknown").arg(root.fmt(root.tokens))
                                  : qsTr("Context usage not known yet"))
     }

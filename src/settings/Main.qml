@@ -113,11 +113,6 @@ ApplicationWindow {
                         currentIndex: Math.max(0, model.indexOf(config.apiFlavor))
                         onActivated: (i) => config.apiFlavor = model[i]
                     }
-                    Label { text: qsTr("Model provider / id") }
-                    RowLayout {
-                        TextField { Layout.fillWidth: true; placeholderText: "provider"; text: config.modelProvider; onEditingFinished: config.modelProvider = text }
-                        TextField { Layout.fillWidth: true; placeholderText: "model"; text: config.modelId; onEditingFinished: config.modelId = text }
-                    }
                 }
             }
 

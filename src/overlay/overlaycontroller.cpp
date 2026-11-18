@@ -119,13 +119,47 @@ QString OverlayController::openInOpencode(const QString &sessionId, const QStrin
     static const QRegularExpression idPattern(QStringLiteral("^[A-Za-z0-9_-]+$"));
     if (!idPattern.match(sessionId).hasMatch())
         return tr("There is no active session to open in opencode yet.");
-    const QString dir = directory.isEmpty() ? m_config->workDir() : directory;
-    if (dir.isEmpty() || !QFileInfo(dir).isDir())
-        return tr("Working directory of this session not found: %1").arg(dir);
+    // The terminal starts in the session's folder. attach uses the server's session, so when the folder is
+    // unknown we fall back to the home folder instead of refusing.
+    QString dir = directory;
+    if (dir.isEmpty())
+        dir = m_config->workDir();
+    if (dir.isEmpty())
+        dir = QDir::homePath();
+    if (!QFileInfo(dir).isDir())
+        return tr("This session's folder (%1) is not on this computer, so opencode cannot open it here.").arg(dir);
     if (QStandardPaths::findExecutable(QStringLiteral("opencode")).isEmpty())
         return tr("The opencode CLI was not found. Install it, or run `qute opencode install`.");
-    // The real TUI, attached to this exact session, started in the session's directory. No shell string is built.
-    if (!TerminalLauncher::launch(QStringLiteral("opencode"), {QStringLiteral("--session"), sessionId}, dir))
+    const QString url = m_config->serverUrl();
+    if (url.isEmpty())
+        return tr("The opencode server address is not set in the settings.");
+    // The real TUI, attached to the server Qute already uses and to this exact session. A plain
+    // `opencode --session` would start a second server inside the TUI and not see Qute's session.
+    // Credentials go through the environment, not argv: argv is visible to every user in the process list,
+    // and the documented variables are OPENCODE_SERVER_USERNAME / OPENCODE_SERVER_PASSWORD.
+    // V2 reads the password from OPENCODE_PASSWORD (the variable the V2 client documents for --server);
+    // the other name is set too so either edition finds it.
+    if (!m_config->serverPassword().isEmpty()) {
+        qputenv("OPENCODE_PASSWORD", m_config->serverPassword().toUtf8());
+        qputenv("OPENCODE_SERVER_PASSWORD", m_config->serverPassword().toUtf8());
+    }
+    // Run through sh so that when attach fails the terminal stays open and shows the exit code,
+    // instead of closing at once and leaving nothing to read.
+    auto quote = [](const QString &v) {
+        QString out = v;
+        out.replace(QLatin1Char('\''), QStringLiteral("'\\''"));
+        return QLatin1Char('\'') + out + QLatin1Char('\'');
+    };
+    // V2 client: `opencode --server <url> --session <id>`. The V1 client is the one that has `attach`.
+    const bool v1 = m_config->apiFlavor() == QLatin1String("v1");
+    const QString command = v1
+        ? QStringLiteral("opencode attach %1 --session %2").arg(quote(url), quote(sessionId))
+        : QStringLiteral("opencode --server %1 --session %2").arg(quote(url), quote(sessionId));
+    const QString script = QStringLiteral(
+        "%1; code=$?; "
+        "if [ $code -ne 0 ]; then echo; echo \"opencode exited with code $code. Press Enter to close.\"; read _; fi")
+        .arg(command);
+    if (!TerminalLauncher::launch(QStringLiteral("sh"), {QStringLiteral("-c"), script}, dir))
         return tr("No terminal emulator was found to open opencode in.");
     return QString();
 }

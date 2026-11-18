@@ -13,7 +13,6 @@ Item {
     property real s: 1.0
     property var sessionStore
     property var modelCatalog
-    property bool enabled: true
     signal settingChanged()
 
     readonly property bool popupOpen: modePopup.visible || modelPopup.visible || effortPopup.visible
@@ -62,14 +61,22 @@ Item {
         }
         return out
     }
+    // Only enabled models, grouped by provider (F2.2). Models the server marks disabled are not offered.
     readonly property var modelItems: {
-        const out = []
+        const list = []
         for (let i = 0; i < models.length; ++i) {
             const m = models[i]
-            out.push({key: m.providerID + "/" + m.modelID, label: m.name, sub: m.providerID,
-                      providerID: m.providerID, modelID: m.modelID, variants: m.variants || []})
+            if (m.enabled === false)
+                continue
+            list.push({key: m.providerID + "/" + m.modelID, label: m.name, group: m.providerID,
+                       providerID: m.providerID, modelID: m.modelID, variants: m.variants || [], sub: ""})
         }
-        return out
+        list.sort(function (a, b) {
+            if (a.group !== b.group)
+                return a.group < b.group ? -1 : 1
+            return a.label < b.label ? -1 : (a.label > b.label ? 1 : 0)
+        })
+        return list
     }
     readonly property var effortItems: {
         const out = [{key: "", label: qsTr("Auto"), sub: qsTr("Provider default")}]
@@ -213,6 +220,7 @@ Item {
                 percent: root.sessionStore ? root.sessionStore.contextPercent : -1
                 tokens: root.sessionStore ? root.sessionStore.contextTokens : 0
                 limit: root.sessionStore ? root.sessionStore.contextLimit : 0
+                cost: (root.sessionStore && root.sessionStore.usage.cost !== undefined) ? root.sessionStore.usage.cost : -1
             }
         }
     }
@@ -260,6 +268,7 @@ Item {
         s: root.s
         title: qsTr("MODEL")
         items: root.modelItems
+        grouped: true
         currentKey: root.sessionStore ? root.sessionStore.activeModelProvider + "/" + root.sessionStore.activeModelId : ""
         emptyText: qsTr("No models reported by opencode")
         onPicked: function (key) { root.pickModel(key) }

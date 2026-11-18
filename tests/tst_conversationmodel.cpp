@@ -1,6 +1,7 @@
 #include "conversationmodel.h"
 
 #include <QFile>
+#include <QSignalSpy>
 #include <QJsonDocument>
 #include <QtTest>
 
@@ -171,8 +172,10 @@ private slots:
 
     void applyMessagesReplacesPreviousHistory()
     {
+        // The prompt is the one the server echoes in the fixture, so it is not kept twice. A local prompt the
+        // server does NOT echo survives a refresh (see unechoedPromptSurvivesRefresh).
         ConversationModel m;
-        m.applyUserPrompt("old");
+        m.applyUserPrompt("run the tests");
         m.applyEvent("session.text.started", QJsonObject{{"assistantMessageID", "old"}, {"ordinal", 0}});
         const QString messagesPath = QFINDTESTDATA("fixtures/v2-turn-messages.json");
         m.applyMessages(loadMessages(messagesPath));
@@ -209,6 +212,31 @@ private slots:
         m.applyMessages(msgs);
         QCOMPARE(m.rowCount(), 1);
         QCOMPARE(m.items().first().text, QString("flat shape"));
+    }
+
+    void echoedPromptKeepsItsRowAndDoesNotResetModel()
+    {
+        ConversationModel m;
+        m.applyUserPrompt(QStringLiteral("run the tests"));
+        m.applyEvent("session.text.started", QJsonObject{{"assistantMessageID", "assistant-1"}, {"ordinal", 0}});
+        m.applyEvent("session.text.delta", QJsonObject{{"assistantMessageID", "assistant-1"}, {"ordinal", 0},
+                                                       {"delta", "tests passed"}});
+        m.applyEvent("session.text.ended", QJsonObject{{"assistantMessageID", "assistant-1"}, {"ordinal", 0},
+                                                       {"text", "tests passed"}});
+
+        QSignalSpy resetSpy(&m, &QAbstractItemModel::modelReset);
+        QJsonArray messages{
+            QJsonObject{{"id", "user-1"}, {"type", "user"}, {"text", "run the tests"}},
+            QJsonObject{{"id", "assistant-1"}, {"type", "assistant"},
+                        {"content", QJsonArray{QJsonObject{{"type", "text"}, {"text", "tests passed"}}}}}
+        };
+        m.applyMessages(messages);
+
+        QCOMPARE(resetSpy.count(), 0);
+        QCOMPARE(m.rowCount(), 2);
+        QCOMPARE(m.items().at(0).id, QStringLiteral("user:local-1"));
+        QCOMPARE(m.items().at(1).id, QStringLiteral("text:assistant-1#0"));
+        QCOMPARE(m.items().at(1).text, QStringLiteral("tests passed"));
     }
 };
 

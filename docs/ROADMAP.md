@@ -177,6 +177,9 @@ Prompt body reminder (V2, flat): `{text, files?, agents?, skills?, delivery?}`; 
 - *Tests:* parser/token tests (`@` detection, cursor position), mock-server search. *Live:* `@README.md summarize`.
 
 ### F1.4 Slash commands
+> **Status (not checked off, live check pending):** typing `/` opens a list above the prompt box (local commands first,
+> then the server's), filtered as you type. Up/Down + Enter/Tab, or a click, runs the entry; Esc closes the list. Server
+> commands run via `runServerCommand` (verify endpoint). Tests: none for the list filter yet (it lives in QML).
 - [ ] Typing `/` at the start opens command suggestions from `GET /api/command` **(verify)** (built-in and project-defined; descriptions shown).
 - [ ] Keyboard navigation and selection; arguments after the command name.
 - [ ] Execute through the native mechanism `POST /api/session/{id}/command {name, text, files, agents, skills}` **(verify)**.
@@ -187,23 +190,37 @@ Prompt body reminder (V2, flat): `{text, files?, agents?, skills?, delivery?}`; 
 Depends on: F0.1, F0.2. **Audit:** only `modelProvider`/`modelId` text fields in settings; nothing in the overlay.
 
 ### F2.1 Build mode & Plan mode
+> **Status (not checked off, live check pending):** Shift+Tab in the prompt box (`Composer.qml` -> `Main.qml cycleAgent()` ->
+> `SessionStore::cycleAgent()`, pure `nextAgent()`); the menu-strip chip still works. Switch is optimistic and sent with
+> `POST /api/session/{id}/agent`. Tests: `tst_modes` (cycle + wrap, mock-server round trip). Shift+Tab is refused while
+> disconnected or busy, with a visible notice. Open: `session.agent.selected` from the TUI is handled in SessionStore, but
+> not yet verified live.
 - [ ] Mode selector in the header (click) and **Shift+Tab** to toggle; the active mode is always visible.
 - [ ] Modes are OpenCode **agents** (`build`, `plan`): switch with `POST /api/session/{id}/agent` **(verify)**; read the current one from the session and from `session.agent.selected` events; never keep an independent mode flag.
 - [ ] External changes (TUI) update the UI via events/reconcile.
 - *Tests:* mock server round trip; state follows events. *Live:* Plan mode must refuse to edit files; Build mode edits.
 
 ### F2.2 Model selector
+> **Status (not checked off):** picker shows enabled models only, grouped by provider (`PickerPopup.grouped`), searchable.
+> Settings lost the free-text provider/model fields; those config keys still feed the V1 prompt path only (V2 uses the session model).
+> "Connected provider" filtering is not verified: the picker uses the server's `enabled` flag. Tests: catalog parse (existing).
+> Open: live switch check.
 - [ ] Shows the current model; opens a searchable list from `GET /api/model` **(verify)**; groups by provider; shows only available/connected models.
 - [ ] Selecting calls `POST /api/session/{id}/model` **(verify)**; default from `GET /api/model/default`.
 - [ ] Replaces the free-text `modelProvider/modelId` fields in settings (kept as "default for new sessions" only if the API supports it).
 - *Tests:* catalog parse, selection call. *Live:* switch model, next answer comes from it.
 
 ### F2.3 Effort selector
+> **Status (not checked off):** effort chip shows only when the model has variants; `Auto` maps to no variant. Tests: none yet
+> for hiding; live check pending.
 - [ ] Shown only when the selected model has variants/reasoning levels (V2 agent model syntax `provider/model#variant` suggests variants exist **(verify)**); lists only valid options.
 - [ ] Changes are sent to OpenCode (via the model/variant mechanism) and read back from events.
 - *Tests:* hidden for models without variants. *Live:* change effort, confirm in the next request.
 
 ### F2.4 Circular context window indicator
+> **Status (not checked off):** ring warns amber at 80 % and red at 95 %, tooltip shows percent, tokens, limit and session cost
+> when reported. Tests: `contextPercentEdgeCases` (no limit, zero, negative, overflow) and `contextMathMatchesOpencode`.
+> Open: live check against the TUI number.
 - [ ] Ring next to the mascot/header: used tokens / context limit of the current model (limit from the model catalog, usage from `Session.Info.tokens` and `session.usage.updated` **(verify)**).
 - [ ] Tooltip/expanded view: tokens used, limit, percent, cost if available.
 - [ ] Graceful when data is missing: neutral ring + "unknown", never 0 % or a crash.
@@ -250,6 +267,10 @@ Depends on: F0.1 (session id/workDir), F1.4 (slash popup; a temporary toolbar bu
 - *Tests:* argv construction for every supported terminal, injection cases (spaces, quotes, `;`, `$()`, newlines in path), missing CLI. *Live:* run it, confirm the TUI shows the same conversation.
 
 ### F4.2 Session continuity
+> **Status (not checked off, live check pending):** `/new` always creates a new session (it does not resume the last one);
+> `/session` lists the server's sessions (TUI ones included, most recent first) and switches to one: the view is cleared and
+> the new session's history is loaded (`session.switched`). The last session id is remembered in config. Tests: `tst_sessions`.
+> Open: the V2 list endpoint `GET /api/session` and the command endpoint `POST /api/session/{id}/command` are (verify) against a live server.
 - [ ] Qute keeps using the same session after the external terminal opens; no duplicate session is created (also not on reconnect/restart: remember the last session id in config and resume it if it still exists).
 - [ ] Changes made in the TUI (messages, agent/model changes, compaction) show up in Qute via events + reconcile.
 - [ ] **Define and test** "same session active in two places": prompts are admitted into the session inbox (`session.inbox.*`, `delivery`) **(verify)**; Qute shows a notice when another client is running a turn and disables/queues sending accordingly.

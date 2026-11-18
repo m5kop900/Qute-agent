@@ -137,6 +137,19 @@ private slots:
         config.setWorkDir(QStringLiteral("/tmp/other"));
         QCOMPARE(store.workDir(), QString("/tmp/other"));
     }
+
+    // F2.4: ContextUsage edge cases. Missing or zero limits give -1 (unknown, never 0 %), zero or negative
+    // usage gives 0, and overflow is reported as-is (the ring clamps the drawing, not the number).
+    void contextPercentEdgeCases()
+    {
+        QCOMPARE(SessionStore::percentFor(100, 0), -1);
+        QCOMPARE(SessionStore::percentFor(100, -5), -1);
+        QCOMPARE(SessionStore::percentFor(0, 1000), 0);
+        QCOMPARE(SessionStore::percentFor(-5, 1000), 0);
+        QCOMPARE(SessionStore::percentFor(800, 1000), 80);
+        QCOMPARE(SessionStore::percentFor(950, 1000), 95);
+        QCOMPARE(SessionStore::percentFor(1500, 1000), 150);
+    }
 };
 
 QTEST_GUILESS_MAIN(TstSessionStore)

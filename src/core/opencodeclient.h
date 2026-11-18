@@ -57,7 +57,13 @@ public:
     // event is emitted so the UI updates immediately (same pattern as answerPermission).
     Q_INVOKABLE void selectAgent(const QString &agent);
     Q_INVOKABLE void selectModel(const QString &providerID, const QString &modelID, const QString &variant);
-    Q_INVOKABLE void newSession();
+    Q_INVOKABLE void newSession();                          // always a NEW session (never resumes the last one)
+    // /session: list the server's sessions (includes sessions created in the opencode TUI) and switch to one.
+    Q_INVOKABLE void listSessions();
+    Q_INVOKABLE void switchSession(const QString &id);
+    // Slash commands defined on the server (GET /api/command): run in the current session with optional arguments.
+    Q_INVOKABLE void runServerCommand(const QString &name, const QString &arguments);
+    static QVariantList parseSessions(const QJsonDocument &document);
     // Ask for the projected message history (oldest first). SessionStore uses this to reconcile.
     Q_INVOKABLE void requestMessageHistory(int limit = 100);
     // Transport for the catalog service: fetch any API path and hand the parsed body back.
@@ -68,6 +74,8 @@ public:
     static QJsonArray extractArray(const QJsonDocument &doc);
 
 signals:
+    void sessionsListed(const QVariantList &sessions);
+    void requestFailed(const QString &message);     // visible error for a user action (shown as a notice)
     void connectedChanged(bool connected);
     void responseTextChanged();
     void sessionChanged();
@@ -90,6 +98,9 @@ private:
     void notRunning();
     void authError();
     void ensureSession();
+    void createSession();
+    void adoptSession(const QString &id);
+    void resetSessionState();
     void openEventStream();
     void onEventData();
     void handleBusEvent(const QString &type, const QJsonObject &props);

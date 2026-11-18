@@ -10,6 +10,33 @@ ListView {
     property var theme
     property real s: 1.0
     property bool stickToBottom: true
+    property real scrollYBeforeModelReset: 0
+    property bool restoringScrollAfterModelReset: false
+
+    // Model resets are a last resort in ConversationModel, but when one is needed
+    // they must not throw away the user's current reading position.
+    Connections {
+        target: conversation
+
+        function onModelAboutToBeReset() {
+            view.scrollYBeforeModelReset = view.contentY
+            view.restoringScrollAfterModelReset = true
+        }
+
+        function onModelReset() {
+            if (!view.restoringScrollAfterModelReset)
+                return
+            view.restoringScrollAfterModelReset = false
+            Qt.callLater(function() {
+                if (view.stickToBottom) {
+                    view.positionViewAtEnd()
+                } else {
+                    const maxY = Math.max(view.originY, view.contentHeight - view.height)
+                    view.contentY = Math.max(view.originY, Math.min(view.scrollYBeforeModelReset, maxY))
+                }
+            })
+        }
+    }
     readonly property string assistantName: store && store.activeModel !== ""
                                             ? String(store.activeModel).split("/").pop()
                                             : qsTr("Assistant")
@@ -18,6 +45,9 @@ ListView {
     clip: true
     spacing: Math.round(10 * s)
     boundsBehavior: ListView.StopAtBounds
+    // Keep delegates alive around the viewport. With lazy delegates of different heights, Qt estimates the
+    // unloaded ones, so the scrollbar thumb jumps as you drag. A large cache keeps the measured heights.
+    cacheBuffer: Math.round(20000 * s)
     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
     // Follow the newest item while the list grows, while the card animates its height (the list starts at
@@ -63,13 +93,14 @@ ListView {
                         border.width: 1
                         border.color: Qt.rgba(view.theme.accent.r, view.theme.accent.g, view.theme.accent.b, 0.35)
 
-                        Text {
+                        SelectableText {
                             id: userText
-                            anchors.fill: parent
-                            anchors.margins: Math.round(10 * view.s)
+                            x: Math.round(10 * view.s)
+                            y: Math.round(10 * view.s)
+                            width: parent.width - 2 * Math.round(10 * view.s)
+                            theme: view.theme
                             text: model.text
-                            textFormat: Text.PlainText
-                            wrapMode: Text.Wrap
+                            textFormat: TextEdit.PlainText
                             color: view.theme.text
                             font.pixelSize: Math.round(13 * view.s)
                         }
@@ -104,16 +135,14 @@ ListView {
                         border.width: 1
                         border.color: view.theme.border
 
-                        Text {
+                        MessageText {
                             id: asstText
-                            anchors.fill: parent
-                            anchors.margins: Math.round(10 * view.s)
+                            x: Math.round(10 * view.s)
+                            y: Math.round(10 * view.s)
+                            width: parent.width - 2 * Math.round(10 * view.s)
                             text: model.text
-                            textFormat: Text.MarkdownText
-                            wrapMode: Text.Wrap
-                            color: view.theme.text
-                            linkColor: view.theme.accent
-                            font.pixelSize: Math.round(13 * view.s)
+                            theme: view.theme
+                            s: view.s
                             onLinkActivated: (link) => Qt.openUrlExternally(link)
                         }
                     }
@@ -201,11 +230,12 @@ ListView {
                             boundsBehavior: Flickable.StopAtBounds
                             ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
-                            Text {
+                            SelectableText {
                                 id: reasonText
                                 width: parent.width - Math.round(8 * view.s)
+                                theme: view.theme
                                 text: model.text
-                                textFormat: Text.MarkdownText
+                                textFormat: TextEdit.MarkdownText
                                 wrapMode: Text.Wrap
                                 color: view.theme.textDim
                                 font.italic: true

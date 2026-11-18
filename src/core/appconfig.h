@@ -22,6 +22,7 @@ class AppConfig : public QObject {
     Q_PROPERTY(QString modelProvider READ modelProvider WRITE setModelProvider NOTIFY changed)
     Q_PROPERTY(QString modelId READ modelId WRITE setModelId NOTIFY changed)
     Q_PROPERTY(QString apiFlavor READ apiFlavor WRITE setApiFlavor NOTIFY changed)   // auto | v1 | v2
+    Q_PROPERTY(QString lastSessionId READ lastSessionId WRITE setLastSessionId NOTIFY changed) // resumed on start (F4.2)
     // --- appearance ---
     Q_PROPERTY(QString packId READ packId WRITE setPackId NOTIFY changed)
     Q_PROPERTY(QString variant READ variant WRITE setVariant NOTIFY changed)
@@ -50,6 +51,7 @@ public:
     QString modelProvider() const { return m_modelProvider; }
     QString modelId() const { return m_modelId; }
     QString apiFlavor() const { return m_apiFlavor; }
+    QString lastSessionId() const { return m_lastSessionId; }
     QString packId() const { return m_packId; }
     QString variant() const { return m_variant; }
     QString themeMode() const { return m_themeMode; }
@@ -67,6 +69,7 @@ public:
     void setModelProvider(const QString &v) { assign(m_modelProvider, v); }
     void setModelId(const QString &v) { assign(m_modelId, v); }
     void setApiFlavor(const QString &v) { assign(m_apiFlavor, v); }
+    void setLastSessionId(const QString &v) { assign(m_lastSessionId, v); }
     void setPackId(const QString &v) { assign(m_packId, v); }
     void setVariant(const QString &v) { assign(m_variant, v); }
     void setThemeMode(const QString &v) { assign(m_themeMode, v); }
@@ -94,6 +97,7 @@ private:
     bool m_autoStartServer = true;
     QString m_serverCommand = QStringLiteral("opencode");
     QString m_workDir;
+    QString m_lastSessionId;
     QString m_modelProvider;
     QString m_modelId;
     QString m_apiFlavor = QStringLiteral("auto");

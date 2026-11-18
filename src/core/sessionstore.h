@@ -21,6 +21,8 @@ class SessionStore : public QObject {
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
     Q_PROPERTY(QString sessionId READ sessionId NOTIFY sessionChanged)
     Q_PROPERTY(QString workDir READ workDir NOTIFY workDirChanged)
+    // The folder the CURRENT session runs in, as the server reports it (may differ from the config folder).
+    Q_PROPERTY(QString sessionDirectory READ sessionDirectory NOTIFY sessionDirectoryChanged)
     Q_PROPERTY(QString activeAgent READ activeAgent NOTIFY activeAgentChanged)
     // Display string "provider/id#variant" plus the parts the composer needs to switch model/variant.
     Q_PROPERTY(QString activeModel READ activeModel NOTIFY activeModelChanged)
@@ -40,6 +42,10 @@ public:
     bool busy() const { return m_busy; }
     QString sessionId() const;
     QString workDir() const { return m_workDir; }
+    QString sessionDirectory() const { return m_sessionDirectory; }
+    // Pure helper (unit-tested): the id after `current` in `ids`, wrapping; empty when there is nothing to switch to.
+    static QString nextAgent(const QString &current, const QStringList &ids);
+
     QString activeAgent() const { return m_activeAgent; }
     QString activeModel() const;
     QString activeModelProvider() const { return m_modelProvider; }
@@ -64,12 +70,15 @@ public slots:
     void onConnectedChanged(bool connected);
     // Selections go through the server; the local state is updated optimistically so the chip reacts at once.
     void selectAgent(const QString &agent);
+    // Shift+Tab: switch to the next primary agent (mode) the server offers.
+    void cycleAgent();
     void selectModel(const QString &providerID, const QString &modelID, const QString &variant);
 
 signals:
     void busyChanged();
     void sessionChanged();
     void workDirChanged();
+    void sessionDirectoryChanged();
     void activeAgentChanged();
     void activeModelChanged();
     void usageChanged();
@@ -92,6 +101,7 @@ private:
     ConversationModel *m_conversation;
     bool m_busy = false;
     QString m_workDir;
+    QString m_sessionDirectory;
     QString m_activeAgent;
     QString m_modelProvider;
     QString m_modelId;

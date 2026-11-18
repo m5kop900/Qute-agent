@@ -22,11 +22,19 @@ Window {
     // so the window top edge is always the card's top edge - the compositor stops an interactive window
     // move once its top edge reaches the screen top, so invisible space above the card would be a hard
     // limit for dragging the overlay up. Clicks below the card pass through (see updateInputRegion).
-    readonly property int desiredLevel: {
+    readonly property int baseLevel: {
         if (client.responseText.length > 500 || conversation.count > 4) return 2
         if (client.responseText.length > 0 || busy || conversation.count > 0) return 1
         if (!client.connected && client.lastError !== "") return 1
         return 0
+    }
+    // The size only ratchets: it grows as the conversation grows and shrinks back only when the conversation is
+    // empty (a new session, /new, or a cleared view). Lists never change it: they open in the drop room.
+    property int shownLevel: 0
+    readonly property int desiredLevel: shownLevel
+    onBaseLevelChanged: {
+        if (baseLevel > shownLevel || (conversation.count === 0 && !busy))
+            shownLevel = baseLevel
     }
     readonly property var panelHeights: [140, 250, 430]
     // Empty room kept inside the window below the card: the menu strip dropdowns open into it.
@@ -86,7 +94,8 @@ Window {
     }
 
     // Escape closes an open dropdown first; only when none is open does it hide the overlay.
-    Shortcut { sequence: "Escape"; enabled: !menuStrip.popupOpen; onActivated: controller.hide() }
+    // Esc closes the open menu or list first; the overlay only hides when nothing is open.
+    Shortcut { sequence: "Escape"; enabled: !menuStrip.popupOpen && !composer.listOpen; onActivated: controller.hide() }
 
     Item {
         anchors.fill: parent
@@ -280,6 +289,11 @@ Window {
                     offText: client.lastError !== "" ? qsTr("opencode is not available") : qsTr("Connecting to opencode…")
                     onSubmitted: function (text) { chat.followEnd(); client.sendPrompt(text) }
                     onCommand: function (text) { win.runCommand(text) }
+                    onModeCycleRequested: win.cycleAgent()
+                    commandItems: win.slashItems
+                    currentSessionKey: client.sessionId
+                    listMaxHeight: win.dropRoom - Math.round(16 * win.s)
+                    onListPicked: function (kind, key) { win.onListPicked(kind, key) }
                 }
             }
         }
@@ -325,6 +339,67 @@ Window {
         NumberAnimation { target: sprite; property: "scale"; to: 1; duration: 120; easing.type: Easing.InOutQuad }
     }
 
+    // Slash commands offered by the "/" list: the local ones first, then the server's own commands.
+    readonly property var slashItems: {
+        const out = [
+            {key: "new", label: "/new", sub: qsTr("Start a new session")},
+            {key: "session", label: "/session", sub: qsTr("Switch between sessions")},
+            {key: "openinopencode", label: "/openinopencode", sub: qsTr("Open this session in the opencode TUI")},
+            {key: "directory", label: "/directory", sub: qsTr("Set the project folder (starts a new session)")}
+        ]
+        const cmds = catalog.commands
+        for (let i = 0; i < cmds.length; ++i) {
+            const name = String(cmds[i].name)
+            if (name === "" || out.some(function (x) { return x.key === name }))
+                continue
+            out.push({key: name, label: "/" + name, sub: cmds[i].description ? String(cmds[i].description) : ""})
+        }
+        return out
+    }
+
+    function isServerCommand(name) {
+        const cmds = catalog.commands
+        for (let i = 0; i < cmds.length; ++i)
+            if (String(cmds[i].name) === name)
+                return true
+        return false
+    }
+
+    function onListPicked(kind, key) {
+        if (kind === "sessions") {
+            client.switchSession(key)
+        } else if (kind === "commands") {
+            if (key === "directory")
+                composer.setText("/directory ")     // needs a path: let the user type it
+            else
+                win.runCommand("/" + key)
+        }
+    }
+
+    Connections {
+        target: client
+        function onSessionsListed(items) {
+            if (items.length === 0)
+                conversation.addNotice(qsTr("No sessions yet."))
+            else
+                composer.openSessions(items, client.sessionId)
+        }
+        function onRequestFailed(message) { conversation.addNotice(message) }
+    }
+
+    // Shift+Tab: switch to the next primary agent (mode). The cycle itself lives in SessionStore.
+    function cycleAgent() {
+        if (!client.connected) {
+            conversation.addNotice(qsTr("Agent mode can be changed once opencode is connected."))
+            return
+        }
+        if (store.busy) {
+            conversation.addNotice(qsTr("Wait for the current answer before changing the agent mode."))
+            return
+        }
+        store.cycleAgent()
+    }
+
     // Slash commands typed in the prompt box. They run in Qute, not on the server.
     function runCommand(line) {
         const m = /^\/(\S+)\s*(.*)$/.exec(line)
@@ -344,18 +419,27 @@ Window {
             conversation.clear()
             client.newSession()
             conversation.addNotice(qsTr("New session in %1").arg(config.workDir))
+        } else if (name === "new") {
+            // A brand-new session. The view is cleared by the session.switched event, so the window shrinks back
+            // to the prompt-only size on its own, the same as on first launch.
+            client.newSession()
+        } else if (name === "session") {
+            client.listSessions()
         } else if (name === "openinopencode") {
-            const err = controller.openInOpencode(client.sessionId, store.workDir)
+            const err = controller.openInOpencode(client.sessionId, store.sessionDirectory)
             if (err !== "")
                 conversation.addNotice(err)
             else
                 controller.hide()
+        } else if (win.isServerCommand(name)) {
+            client.runServerCommand(name, arg)
         } else {
             conversation.addNotice(qsTr("Unknown command: /%1").arg(name))
         }
     }
 
     Component.onCompleted: {
+        win.shownLevel = win.baseLevel
         win.height = win.contentHeight + win.dropRoom
         updateInputRegion()
     }

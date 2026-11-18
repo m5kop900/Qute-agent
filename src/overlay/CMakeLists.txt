@@ -11,6 +11,10 @@ qt_add_qml_module(qute
         Main.qml
         SpriteView.qml
         Composer.qml
+        InlineList.qml
+        MessageText.qml
+        SelectableText.qml
+        CodeHighlight.js
         ControlChip.qml
         ContextRing.qml
         PickerPopup.qml

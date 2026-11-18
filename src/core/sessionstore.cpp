@@ -8,6 +8,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonValue>
+#include <QVariant>
 #include <QtMath>
 
 static QString firstString(const QJsonObject &o, std::initializer_list<const char *> keys)
@@ -247,6 +248,28 @@ void SessionStore::selectAgent(const QString &agent)
         m_client->selectAgent(agent);
 }
 
+QString SessionStore::nextAgent(const QString &current, const QStringList &ids)
+{
+    if (ids.size() < 2)
+        return QString();
+    // An unknown or empty current agent starts the cycle at the first one ("build" when unset).
+    const QString cur = current.isEmpty() ? QStringLiteral("build") : current;
+    const int idx = ids.indexOf(cur);
+    return ids.at((idx + 1) % ids.size());
+}
+
+void SessionStore::cycleAgent()
+{
+    if (!m_catalog)
+        return;
+    QStringList ids;
+    for (const QVariant &v : m_catalog->primaryAgents())
+        ids << v.toMap().value(QStringLiteral("id")).toString();
+    const QString next = nextAgent(m_activeAgent, ids);
+    if (!next.isEmpty())
+        selectAgent(next);
+}
+
 void SessionStore::selectModel(const QString &providerID, const QString &modelID, const QString &variant)
 {
     if (modelID.isEmpty())
@@ -258,6 +281,27 @@ void SessionStore::selectModel(const QString &providerID, const QString &modelID
 
 void SessionStore::onEvent(const QString &type, const QJsonObject &p)
 {
+    if (type == QLatin1String("session.switched")) {
+        // /new or /session: the view belongs to the previous session. Start clean, then load the new one.
+        m_conversation->clear();
+        setBusy(false);
+        if (!m_sessionDirectory.isEmpty()) {
+            m_sessionDirectory.clear();
+            emit sessionDirectoryChanged();
+        }
+        if (!m_usage.isEmpty()) {
+            m_usage.clear();
+            emit usageChanged();
+        }
+        setContextTokens(0);
+        const QString sid = p.value(QStringLiteral("sessionID")).toString();
+        if (m_client && !sid.isEmpty()) {
+            m_client->requestMessageHistory();
+            if (m_client->isV2Server())
+                m_client->fetchJson(QStringLiteral("/api/session/%1").arg(sid));
+        }
+        return;
+    }
     m_conversation->applyEvent(type, p);
 
     if (type == QLatin1String("server.connected")) {
@@ -328,6 +372,15 @@ void SessionStore::applySessionInfo(const QJsonObject &object)
         o = o.value("info").toObject();
     if (o.value("data").isObject())
         o = o.value("data").toObject();
+
+    // Session folder: the server's own answer, never the config folder (which may be empty).
+    QString dir = o.value("directory").toString();
+    if (dir.isEmpty())
+        dir = o.value("location").toObject().value("directory").toString();
+    if (!dir.isEmpty() && dir != m_sessionDirectory) {
+        m_sessionDirectory = dir;
+        emit sessionDirectoryChanged();
+    }
 
     const QJsonObject usage = o.value("usage").toObject();
     QJsonObject tokens = o.value("tokens").toObject();

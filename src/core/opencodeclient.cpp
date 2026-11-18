@@ -6,6 +6,8 @@
 #include <QJsonDocument>
 #include <QNetworkReply>
 #include <QProcessEnvironment>
+#include <QRegularExpression>
+#include <algorithm>
 #include <QStandardPaths>
 #include <QUrl>
 #include <QUrlQuery>
@@ -238,6 +240,34 @@ void OpenCodeClient::ensureSession()
         return;
     m_sessionRequested = true;
 
+    // F4.2: resume the session of the last run when the server still has it, so a restart or a
+    // /openinopencode round trip keeps the same conversation. Only "not found" creates a new session;
+    // a network error must not silently fork the conversation.
+    const QString last = m_config->lastSessionId();
+    if (isV2() && !last.isEmpty()) {
+        QNetworkReply *r = m_nam->get(makeRequest(QStringLiteral("/api/session/%1").arg(last)));
+        connect(r, &QNetworkReply::finished, this, [this, r, last] {
+            r->deleteLater();
+            const int status = r->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            if (r->error() == QNetworkReply::NoError && status == 200) {
+                m_sessionRequested = false;
+                adoptSession(last);
+            } else if (status == 404) {
+                m_sessionRequested = false;
+                createSession();
+            } else {
+                m_sessionRequested = false;
+                setError(tr("Could not resume session %1: %2").arg(last, r->errorString()));
+                m_retry.start(4000);
+            }
+        });
+        return;
+    }
+    createSession();
+}
+
+void OpenCodeClient::createSession()
+{
     QJsonObject body;
     if (isV2()) {
         if (!m_config->workDir().isEmpty())
@@ -256,26 +286,131 @@ void OpenCodeClient::ensureSession()
             return;
         }
         const QJsonObject o = QJsonDocument::fromJson(r->readAll()).object();
-        m_sessionId = o.value("id").toString();
-        if (m_sessionId.isEmpty()) m_sessionId = o.value("data").toObject().value("id").toString();
-        if (m_sessionId.isEmpty()) m_sessionId = o.value("session").toObject().value("id").toString();
-        emit sessionChanged();
-        if (m_sessionId.isEmpty()) {
+        QString id = o.value("id").toString();
+        if (id.isEmpty()) id = o.value("data").toObject().value("id").toString();
+        if (id.isEmpty()) id = o.value("session").toObject().value("id").toString();
+        if (id.isEmpty()) {
             setError(tr("Server returned no session id"));
             m_retry.start(4000);
             return;
         }
-        openEventStream();
+        adoptSession(id);
     });
+}
+
+void OpenCodeClient::adoptSession(const QString &id)
+{
+    m_sessionId = id;
+    // Remember it for the next start and for /openinopencode.
+    if (m_config->lastSessionId() != id) {
+        m_config->setLastSessionId(id);
+        m_config->save();
+    }
+    emit sessionChanged();
+    openEventStream();
+}
+
+void OpenCodeClient::resetSessionState()
+{
+    m_partOrder.clear(); m_partText.clear(); m_partMessage.clear(); m_responseText.clear();
+    m_roles.clear();
+    m_childSessions.clear();
+    m_requestSession.clear();
+    m_turnActive = false;
+    emit responseTextChanged();
 }
 
 void OpenCodeClient::newSession()
 {
+    // /new: a brand-new session. Deliberately NOT ensureSession(): that would resume the remembered one.
+    if (m_sessionRequested)
+        return;
+    m_sessionRequested = true;
     m_sessionId.clear();
+    resetSessionState();
     emit sessionChanged();
-    m_partOrder.clear(); m_partText.clear(); m_partMessage.clear(); m_responseText.clear();
-    emit responseTextChanged();
-    ensureSession();
+    emit serverEvent(QStringLiteral("session.switched"), QJsonObject{{"sessionID", QString()}});
+    createSession();
+}
+
+void OpenCodeClient::switchSession(const QString &id)
+{
+    static const QRegularExpression idPattern(QStringLiteral("^[A-Za-z0-9_-]+$"));
+    if (!idPattern.match(id).hasMatch()) {
+        emit requestFailed(tr("Invalid session id."));
+        return;
+    }
+    if (id == m_sessionId)
+        return;
+    resetSessionState();
+    m_sessionId = id;
+    m_config->setLastSessionId(id);
+    m_config->save();
+    emit sessionChanged();
+    emit serverEvent(QStringLiteral("session.switched"), QJsonObject{{"sessionID", id}});
+    openEventStream();
+}
+
+QVariantList OpenCodeClient::parseSessions(const QJsonDocument &document)
+{
+    QVariantList out;
+    for (const QJsonValue &v : extractArray(document)) {
+        const QJsonObject o = v.toObject();
+        QString id = o.value(QStringLiteral("id")).toString();
+        if (id.isEmpty())
+            id = o.value(QStringLiteral("data")).toObject().value(QStringLiteral("id")).toString();
+        if (id.isEmpty())
+            continue;
+        QString title = o.value(QStringLiteral("title")).toString();
+        if (title.isEmpty())
+            title = QStringLiteral("(untitled)");
+        QString directory = o.value(QStringLiteral("directory")).toString();
+        if (directory.isEmpty())
+            directory = o.value(QStringLiteral("location")).toObject().value(QStringLiteral("directory")).toString();
+        // Milliseconds since epoch, as opencode reports them; 0 when missing.
+        double updated = o.value(QStringLiteral("time")).toObject().value(QStringLiteral("updated")).toDouble();
+        if (updated == 0)
+            updated = o.value(QStringLiteral("updated")).toDouble();
+        out << QVariantMap{{QStringLiteral("key"), id}, {QStringLiteral("label"), title},
+                           {QStringLiteral("sub"), directory}, {QStringLiteral("updated"), updated}};
+    }
+    // Most recently used first, like the opencode session list.
+    std::stable_sort(out.begin(), out.end(), [](const QVariant &a, const QVariant &b) {
+        return a.toMap().value(QStringLiteral("updated")).toDouble() > b.toMap().value(QStringLiteral("updated")).toDouble();
+    });
+    return out;
+}
+
+void OpenCodeClient::listSessions()
+{
+    // (verify) V2 list endpoint GET /api/session; V1 uses GET /session.
+    const QString path = isV2() ? QStringLiteral("/api/session?limit=50") : QStringLiteral("/session");
+    QNetworkReply *r = m_nam->get(makeRequest(path));
+    connect(r, &QNetworkReply::finished, this, [this, r] {
+        r->deleteLater();
+        if (r->error() != QNetworkReply::NoError) {
+            emit requestFailed(tr("Listing sessions failed: %1").arg(r->errorString()));
+            return;
+        }
+        emit sessionsListed(parseSessions(QJsonDocument::fromJson(r->readAll())));
+    });
+}
+
+void OpenCodeClient::runServerCommand(const QString &name, const QString &arguments)
+{
+    static const QRegularExpression namePattern(QStringLiteral("^[A-Za-z0-9_.:-]+$"));
+    if (m_sessionId.isEmpty() || !namePattern.match(name).hasMatch()) {
+        emit requestFailed(tr("No active session to run /%1 in.").arg(name));
+        return;
+    }
+    // (verify) V2 POST /api/session/{id}/command {name, text}; V1 POST /session/{id}/command.
+    const QString session = m_sessionId;
+    if (isV2())
+        postCommand(QStringLiteral("/api/session/%1/command").arg(session),
+                    QJsonObject{{"name", name}, {"text", arguments}}, tr("Running /%1").arg(name), {});
+    else
+        postCommand(QStringLiteral("/session/%1/command").arg(session),
+                    QJsonObject{{"command", name}, {"arguments", arguments}}, tr("Running /%1").arg(name), {});
 }
 
 void OpenCodeClient::openEventStream()

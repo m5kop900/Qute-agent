@@ -530,22 +530,29 @@ void ConversationModel::applyMessages(const QJsonArray &asc)
 
     // Local items the projection cannot contain yet must survive a refresh: prompts sent but not echoed
     // back by the server, and notices (slash-command feedback). Wiping them made messages vanish.
-    QSet<QString> claimed;
+    // Match local prompts from newest to oldest against the newest equal server messages.
+    // Keep the local row ID when the server echoes a prompt: changing it would make the
+    // ListView's model appear to have been replaced during an ordinary history refresh.
+    QSet<int> claimedRows;
     QList<Item> keptLocal;
-    for (const Item &lu : std::as_const(m_items)) {
+    for (int localRow = m_items.size() - 1; localRow >= 0; --localRow) {
+        const Item &lu = m_items.at(localRow);
         if (lu.kind == QLatin1String("user") && lu.id.startsWith(QLatin1String("user:local-"))) {
             bool echoed = false;
-            for (const Item &s : std::as_const(out)) {
-                if (s.kind == QLatin1String("user") && s.text == lu.text && !claimed.contains(s.id)) {
-                    claimed << s.id;
+            for (int serverRow = out.size() - 1; serverRow >= 0; --serverRow) {
+                Item &serverItem = out[serverRow];
+                if (serverItem.kind == QLatin1String("user") && serverItem.text == lu.text
+                    && !claimedRows.contains(serverRow)) {
+                    claimedRows.insert(serverRow);
+                    serverItem.id = lu.id;
                     echoed = true;
                     break;
                 }
             }
             if (!echoed)
-                keptLocal << lu;
+                keptLocal.prepend(lu);
         } else if (lu.kind == QLatin1String("notice")) {
-            keptLocal << lu;
+            keptLocal.prepend(lu);
         }
     }
     // Local prompts and notices go after the server history, before the pending requests.

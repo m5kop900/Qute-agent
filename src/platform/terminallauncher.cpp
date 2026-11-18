@@ -26,7 +26,11 @@ bool launch(const QString &program, const QStringList &args, const QString &work
     QString cmd;
     if (!workDir.isEmpty())
         cmd = QStringLiteral("cd %1 && ").arg(shellQuote(workDir));
-    cmd += QStringLiteral("'%1' %2").arg(program, args.join(QLatin1Char(' ')));
+    // Every argument is quoted, so a URL, password or session id with spaces or quotes stays one argument.
+    QStringList quoted{shellQuote(program)};
+    for (const QString &a : args)
+        quoted << shellQuote(a);
+    cmd += quoted.join(QLatin1Char(' '));
     cmd.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));                 // AppleScript string escaping
     cmd.replace(QLatin1Char('"'), QStringLiteral("\\\""));
     return QProcess::startDetached(QStringLiteral("osascript"),

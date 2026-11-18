@@ -11,6 +11,7 @@ Popup {
     property var items: []
     property string currentKey: ""
     property bool searchable: true
+    property bool grouped: false       // items carry a `group` field: a header is drawn where it changes
     property string emptyText: qsTr("Nothing available")
     signal picked(string key)
 
@@ -150,7 +151,9 @@ Popup {
                 required property int index
 
                 width: ListView.view.width
-                height: Math.round(32 * root.s)
+                readonly property bool showGroup: root.grouped && modelData.group !== undefined
+                    && (index === 0 || ListView.view.model[index - 1].group !== modelData.group)
+                height: Math.round(32 * root.s) + (showGroup ? groupLabel.implicitHeight : 0)
                 radius: Math.round(6 * root.s)
                 color: modelData.key === root.currentKey
                        ? Qt.rgba(root.theme.accent.r, root.theme.accent.g, root.theme.accent.b, 0.13)
@@ -158,12 +161,30 @@ Popup {
                          ? Qt.rgba(root.theme.text.r, root.theme.text.g, root.theme.text.b, 0.07)
                          : "transparent"
 
+                Label {
+                    id: groupLabel
+                    anchors.left: parent.left
+                    anchors.leftMargin: Math.round(8 * root.s)
+                    anchors.right: parent.right
+                    anchors.rightMargin: Math.round(8 * root.s)
+                    anchors.top: parent.top
+                    anchors.topMargin: Math.round(4 * root.s)
+                    visible: row.showGroup
+                    text: row.showGroup ? String(row.modelData.group).toUpperCase() : ""
+                    color: root.theme.accent
+                    font.pixelSize: Math.round(8 * root.s)
+                    font.letterSpacing: Math.round(0.6 * root.s)
+                    font.bold: true
+                    elide: Text.ElideRight
+                }
+
                 Column {
                     anchors.left: parent.left
                     anchors.leftMargin: Math.round(8 * root.s)
                     anchors.right: check.left
                     anchors.rightMargin: Math.round(6 * root.s)
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.top: groupLabel.visible ? groupLabel.bottom : parent.top
+                    anchors.bottom: parent.bottom
                     spacing: 0
 
                     Label {
