@@ -1,0 +1,136 @@
+{
+    "classes": [
+        {
+            "className": "AgentState",
+            "lineNumber": 20,
+            "object": true,
+            "properties": [
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 0,
+                    "lineNumber": 22,
+                    "name": "stateName",
+                    "notify": "stateChanged",
+                    "override": false,
+                    "read": "stateName",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 1,
+                    "lineNumber": 23,
+                    "name": "detail",
+                    "notify": "stateChanged",
+                    "override": false,
+                    "read": "detail",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 2,
+                    "lineNumber": 24,
+                    "name": "permissionId",
+                    "notify": "stateChanged",
+                    "override": false,
+                    "read": "permissionId",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 3,
+                    "lineNumber": 25,
+                    "name": "requestKind",
+                    "notify": "stateChanged",
+                    "override": false,
+                    "read": "requestKind",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false
+                }
+            ],
+            "qualifiedClassName": "AgentState",
+            "signals": [
+                {
+                    "access": "public",
+                    "index": 0,
+                    "lineNumber": 44,
+                    "name": "stateChanged",
+                    "returnType": "void"
+                }
+            ],
+            "slots": [
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "type",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "properties",
+                            "type": "QJsonObject"
+                        }
+                    ],
+                    "index": 1,
+                    "lineNumber": 39,
+                    "name": "handleEvent",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "connected",
+                            "type": "bool"
+                        }
+                    ],
+                    "index": 2,
+                    "lineNumber": 40,
+                    "name": "setConnected",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 3,
+                    "lineNumber": 41,
+                    "name": "promptSent",
+                    "returnType": "void"
+                }
+            ],
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QObject"
+                }
+            ]
+        }
+    ],
+    "inputFile": "agentstate.h",
+    "outputRevision": 69
+}

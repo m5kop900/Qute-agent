@@ -14,6 +14,13 @@ Window {
     property bool placed: false
 
     readonly property real s: config.scale
+    // Summon effect room: while the summon animation runs, the window is this much wider on the left
+    // (and the content starts shifted right by it), so the ring, the sparkles and the overshoot are
+    // never cut off at the window edge. The room is taken back once the animation has finished.
+    readonly property int bleedMax: Math.round(80 * s)
+    property real summonBleed: 0
+    // Guarded: the level bindings can still run while the model is being torn down on quit.
+    readonly property int convCount: conversation ? conversation.count : 0
     readonly property string st: agent.stateName
     readonly property bool busy: st === "thinking" || st === "working" || st === "waiting"
 
@@ -23,8 +30,8 @@ Window {
     // move once its top edge reaches the screen top, so invisible space above the card would be a hard
     // limit for dragging the overlay up. Clicks below the card pass through (see updateInputRegion).
     readonly property int baseLevel: {
-        if (client.responseText.length > 500 || conversation.count > 4) return 2
-        if (client.responseText.length > 0 || busy || conversation.count > 0 || store.loadingHistory) return 1
+        if (client.responseText.length > 500 || win.convCount > 4) return 2
+        if (client.responseText.length > 0 || busy || win.convCount > 0 || store.loadingHistory) return 1
         if (!client.connected && client.lastError !== "") return 1
         return 0
     }
@@ -33,7 +40,7 @@ Window {
     property int shownLevel: 0
     readonly property int desiredLevel: shownLevel
     onBaseLevelChanged: {
-        if (baseLevel > shownLevel || (conversation.count === 0 && !busy))
+        if (baseLevel > shownLevel || (win.convCount === 0 && !busy))
             shownLevel = baseLevel
     }
     readonly property var panelHeights: [140, 250, 430]
@@ -49,15 +56,20 @@ Window {
     readonly property int contentHeight: Math.round(contentTop + panelHeights[desiredLevel] * s) + attachExtra
     // The card grows upward from cardBottom. Until the window has been resized, never draw it taller
     // than the window can show, so nothing is ever clipped at the top.
-    readonly property real cardBottom: win.height - dropRoom
+    // Taken from the requested geometry, not from win.height: the OS resize arrives later, so reading
+    // win.height made the card and the click mask disagree for a moment (and after shrinking, for good).
+    readonly property real cardBottom: contentHeight
     readonly property int cardHeight: Math.min(Math.round(panelHeights[desiredLevel] * s) + attachExtra,
                                                Math.max(0, Math.round(cardBottom - contentTop)))
 
-    width: Math.round(560 * s)
+    width: Math.round(560 * s) + Math.round(summonBleed)
     // The height is applied by the platform shell (see contentHeight/dropRoom); this only gives the
     // surface a sensible size before the first placement.
     // A new level (or another UI scale) needs a window tall enough for the card: ask the shell for it.
-    onContentHeightChanged: controller.resizeToContent(win.contentHeight, win.dropRoom)
+    onContentHeightChanged: {
+        controller.resizeToContent(win.contentHeight, win.dropRoom)
+        win.updateInputRegion()          // the click mask follows the new card height at once
+    }
 
     Theme { id: appTheme }
 
@@ -153,8 +165,10 @@ Window {
             width: Math.round(128 * win.s)
             height: width
             // Sits on the prompt box's bottom edge, which stays put while the card grows upward.
+            x: Math.round(win.summonBleed)
             y: win.cardBottom - height
             stateName: win.st
+            animate: config.animations      // "Animations" switch in settings
             scale: 1
             rotation: 0
             opacity: 1
@@ -175,7 +189,7 @@ Window {
                 y: sprite.y + sprite.height / 2 - height / 2 + Math.sin(ang) * dist * t
                 opacity: Math.sin(Math.PI * t)
                 text: ["\u2726", "\u2661", "\u2727", "\u273f", "\u2605", "\u2661", "\u2727"][index]
-                color: index % 2 ? "#ff9ccc" : appTheme.accent
+                color: index % 2 ? appTheme.accentAlt : appTheme.accent
                 font.pixelSize: Math.round(14 * win.s)
                 function play() { burst.restart() }
                 SequentialAnimation {
@@ -196,23 +210,26 @@ Window {
 
         Rectangle {
             id: panel
-            x: sprite.width + Math.round(4 * win.s)
+            x: sprite.x + sprite.width + Math.round(4 * win.s)
             y: win.cardBottom - height   // grows upward; the bottom edge (prompt box) stays put
             width: parent.width - x - Math.round(6 * win.s)
             height: win.cardHeight
-            radius: Math.round(16 * win.s)
+            radius: Math.round(16 * win.s * config.radiusScale)
             color: appTheme.panel
             transform: Translate { id: panelShift; y: 0 }
             border.width: 1
             border.color: appTheme.border
-            Behavior on height { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+            Behavior on height {
+                enabled: config.animations
+                NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+            }
             // Keep the click mask in sync with what is actually drawn, every frame of the animation.
             onHeightChanged: win.updateInputRegion()
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: Math.round(10 * win.s)
-                spacing: Math.round(8 * win.s)
+                anchors.margins: Math.round(10 * win.s * config.spacingScale)
+                spacing: Math.round(8 * win.s * config.spacingScale)
 
                 MenuStrip {
                     id: menuStrip
@@ -259,7 +276,7 @@ Window {
                     Layout.fillWidth: true
                     visible: win.busy
                     implicitHeight: Math.round(30 * win.s)
-                    radius: Math.round(9 * win.s)
+                    radius: Math.round(9 * win.s * config.radiusScale)
                     color: Qt.rgba(appTheme.text.r, appTheme.text.g, appTheme.text.b, 0.05)
                     border.width: 1
                     border.color: win.st === "waiting" ? Qt.rgba(appTheme.accent.r, appTheme.accent.g, appTheme.accent.b, 0.4)
@@ -275,7 +292,7 @@ Window {
                             Layout.preferredWidth: Math.round(6 * win.s)
                             Layout.preferredHeight: Layout.preferredWidth
                             radius: width / 2
-                            color: win.st === "error" ? "#e5484d" : appTheme.accent
+                            color: win.st === "error" ? appTheme.danger : appTheme.accent
                             SequentialAnimation on opacity {
                                 loops: Animation.Infinite
                                 running: statusBar.visible
@@ -296,7 +313,7 @@ Window {
 
                         PillButton { theme: appTheme; s: win.s; visible: win.st === "waiting" && agent.requestKind !== "form"; text: qsTr("Allow");  onClicked: client.answerPermission(agent.permissionId, "once") }
                         PillButton { theme: appTheme; s: win.s; visible: win.st === "waiting" && agent.requestKind !== "form"; text: qsTr("Always"); onClicked: client.answerPermission(agent.permissionId, "always") }
-                        PillButton { theme: appTheme; s: win.s; visible: win.st === "waiting" && agent.requestKind !== "form"; text: qsTr("Deny");   tint: "#e5484d"; onClicked: client.answerPermission(agent.permissionId, "reject") }
+                        PillButton { theme: appTheme; s: win.s; visible: win.st === "waiting" && agent.requestKind !== "form"; text: qsTr("Deny");   tint: appTheme.danger; onClicked: client.answerPermission(agent.permissionId, "reject") }
                         PillButton { theme: appTheme; s: win.s; visible: win.st === "waiting" && agent.requestKind === "form"; text: qsTr("Cancel question"); onClicked: client.cancelForm(agent.permissionId) }
                         PillButton { theme: appTheme; s: win.s; visible: win.st !== "waiting"; text: qsTr("Stop"); glyph: "■"; tint: appTheme.textDim; onClicked: client.abort() }
                     }
@@ -338,7 +355,14 @@ Window {
     onPlacedChanged: if (placed) summon()
 
     function summon() {
-        summonAnim.restart()
+        if (!config.animations) {           // jump straight to the final state
+            summonBleed = 0
+            sprite.scale = 1; sprite.rotation = 0; sprite.opacity = 1
+            summonRing.opacity = 0; panel.opacity = 1; panelShift.y = 0
+            return
+        }
+        summonBleed = bleedMax              // open with room around the mascot ...
+        summonAnim.restart()                // ... which the animation takes back
         for (let i = 0; i < sparkles.count; ++i)
             sparkles.itemAt(i).play()
     }
@@ -368,6 +392,7 @@ Window {
             NumberAnimation { target: summonRing; property: "opacity"; to: 0; duration: 380; easing.type: Easing.OutQuad }
             NumberAnimation { target: panel; property: "opacity"; to: 1; duration: 220; easing.type: Easing.OutCubic }
             NumberAnimation { target: panelShift; property: "y"; to: 0; duration: 260; easing.type: Easing.OutBack }
+            NumberAnimation { target: win; property: "summonBleed"; to: 0; duration: 420; easing.type: Easing.OutCubic }
         }
         NumberAnimation { target: sprite; property: "scale"; to: 1; duration: 120; easing.type: Easing.InOutQuad }
     }

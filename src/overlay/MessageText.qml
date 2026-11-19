@@ -14,7 +14,7 @@ Column {
     property int pixelSize: Math.round(13 * s)
     signal linkActivated(string link)
 
-    spacing: Math.round(8 * s)
+    spacing: Math.round(8 * s * config.spacingScale)
 
     function hex(c) {
         const h = function (v) { return ("0" + Math.round(v * 255).toString(16)).slice(-2) }
@@ -25,8 +25,8 @@ Column {
             text: hex(root.textColor),
             dim: hex(root.theme.textDim),
             keyword: hex(root.theme.accent),
-            string: "#98c379",
-            number: "#d19a66",
+            string: root.theme ? root.theme.syntaxString : "#98c379",
+            number: root.theme ? root.theme.syntaxNumber : "#d19a66",
             comment: hex(root.theme.textDim)
         }
     }
@@ -62,8 +62,8 @@ Column {
                 readonly property real pad: Math.round(8 * root.s)
                 readonly property real headerH: Math.round(24 * root.s)
                 height: headerH + codeText.implicitHeight + 2 * pad
-                radius: Math.round(8 * root.s)
-                color: root.theme.bg !== undefined ? root.theme.bg : root.theme.input
+                radius: Math.round(8 * root.s * config.radiusScale)
+                color: root.theme.codeBackground
                 border.width: 1
                 border.color: root.theme.border
                 property bool copied: false
@@ -102,7 +102,7 @@ Column {
                     anchors.topMargin: Math.round(4 * root.s)
                     width: copyLabel.implicitWidth + 2 * Math.round(8 * root.s)
                     height: Math.round(18 * root.s)
-                    radius: Math.round(5 * root.s)
+                    radius: Math.round(5 * root.s * config.radiusScale)
                     color: copyArea.containsMouse ? root.theme.border : "transparent"
                     border.width: 1
                     border.color: root.theme.border
@@ -137,7 +137,7 @@ Column {
                     textFormat: TextEdit.RichText
                     text: part.modelData.code ? Code.highlight(part.modelData.text, part.modelData.lang, root.palette()) : ""
                     wrapMode: TextEdit.WrapAnywhere
-                    font.family: "monospace"
+                    font.family: root.theme ? root.theme.codeFamily : "monospace"
                     font.pixelSize: Math.round(12 * root.s)
                     color: root.textColor
                 }

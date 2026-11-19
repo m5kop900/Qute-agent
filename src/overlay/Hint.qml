@@ -32,7 +32,7 @@ ToolTip {
     }
 
     background: Rectangle {
-        radius: Math.round(8 * root.s)
+        radius: Math.round(8 * root.s * config.radiusScale)
         color: root.theme.input
         border.width: 1
         border.color: root.theme.border

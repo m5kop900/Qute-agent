@@ -1,0 +1,212 @@
+{
+    "classes": [
+        {
+            "className": "SpritePackManager",
+            "lineNumber": 11,
+            "methods": [
+                {
+                    "access": "public",
+                    "index": 2,
+                    "lineNumber": 29,
+                    "name": "rescan",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "packId",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "variant",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 3,
+                    "lineNumber": 30,
+                    "name": "load",
+                    "returnType": "bool"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "packId",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 4,
+                    "isConst": true,
+                    "lineNumber": 31,
+                    "name": "variantsOf",
+                    "returnType": "QStringList"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "stateName",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 5,
+                    "isConst": true,
+                    "lineNumber": 32,
+                    "name": "stateInfo",
+                    "returnType": "QVariantMap"
+                },
+                {
+                    "access": "public",
+                    "index": 6,
+                    "isConst": true,
+                    "lineNumber": 36,
+                    "name": "packsFolder",
+                    "returnType": "QString"
+                },
+                {
+                    "access": "public",
+                    "index": 7,
+                    "lineNumber": 37,
+                    "name": "openPacksFolder",
+                    "returnType": "bool"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "packIdOrPath",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 8,
+                    "isConst": true,
+                    "lineNumber": 38,
+                    "name": "validatePack",
+                    "returnType": "QVariantMap"
+                },
+                {
+                    "access": "public",
+                    "index": 9,
+                    "isConst": true,
+                    "lineNumber": 39,
+                    "name": "validateUserPacks",
+                    "returnType": "QVariantList"
+                }
+            ],
+            "object": true,
+            "properties": [
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 0,
+                    "lineNumber": 13,
+                    "name": "frameWidth",
+                    "notify": "loaded",
+                    "override": false,
+                    "read": "frameWidth",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "int",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 1,
+                    "lineNumber": 14,
+                    "name": "frameHeight",
+                    "notify": "loaded",
+                    "override": false,
+                    "read": "frameHeight",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "int",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 2,
+                    "lineNumber": 15,
+                    "name": "packName",
+                    "notify": "loaded",
+                    "override": false,
+                    "read": "packName",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 3,
+                    "lineNumber": 16,
+                    "name": "revision",
+                    "notify": "loaded",
+                    "override": false,
+                    "read": "revision",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "int",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 4,
+                    "lineNumber": 17,
+                    "name": "availablePacks",
+                    "notify": "packsChanged",
+                    "override": false,
+                    "read": "availablePacks",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QVariantList",
+                    "user": false,
+                    "virtual": false
+                }
+            ],
+            "qualifiedClassName": "SpritePackManager",
+            "signals": [
+                {
+                    "access": "public",
+                    "index": 0,
+                    "lineNumber": 42,
+                    "name": "loaded",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 1,
+                    "lineNumber": 43,
+                    "name": "packsChanged",
+                    "returnType": "void"
+                }
+            ],
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QObject"
+                }
+            ]
+        }
+    ],
+    "inputFile": "spritepackmanager.h",
+    "outputRevision": 69
+}

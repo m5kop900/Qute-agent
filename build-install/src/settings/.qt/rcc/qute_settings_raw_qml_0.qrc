@@ -1,0 +1,7 @@
+<RCC>
+  <qresource prefix="/qt/qml/Qute/Settings/">
+    <file alias="AnimatedSprite.qml">/home/mkop/Downloads/qute/qute/src/settings/AnimatedSprite.qml</file>
+    <file alias="Main.qml">/home/mkop/Downloads/qute/qute/src/settings/Main.qml</file>
+  </qresource>
+</RCC>
+

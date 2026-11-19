@@ -1,0 +1,33 @@
+{
+    "classes": [
+        {
+            "className": "SingleInstance",
+            "lineNumber": 7,
+            "object": true,
+            "qualifiedClassName": "SingleInstance",
+            "signals": [
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "command",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 0,
+                    "lineNumber": 19,
+                    "name": "commandReceived",
+                    "returnType": "void"
+                }
+            ],
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QObject"
+                }
+            ]
+        }
+    ],
+    "inputFile": "singleinstance.h",
+    "outputRevision": 69
+}

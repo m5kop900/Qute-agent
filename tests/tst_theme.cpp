@@ -35,6 +35,14 @@ private slots:
         // invalid config value and no system accent -> the built-in fallback
         QCOMPARE(Theme::resolveAccent(QStringLiteral("not-a-color"), QColor()), QColor("#6ea8ff"));
     }
+    void fontFamilyPrecedence()
+    {
+        // a configured family wins; blank or whitespace-only means "use the system font"
+        QCOMPARE(Theme::resolveFamily(QStringLiteral("Fira Code"), QStringLiteral("Noto Sans")), QStringLiteral("Fira Code"));
+        QCOMPARE(Theme::resolveFamily(QStringLiteral("  Fira Code  "), QStringLiteral("Noto Sans")), QStringLiteral("Fira Code"));
+        QCOMPARE(Theme::resolveFamily(QString(), QStringLiteral("Noto Sans")), QStringLiteral("Noto Sans"));
+        QCOMPARE(Theme::resolveFamily(QStringLiteral("   "), QStringLiteral("Noto Sans")), QStringLiteral("Noto Sans"));
+    }
     void contrastTextStaysReadable()
     {
         QCOMPARE(Theme::contrastText(QColor("#000000")), QColor("#ffffff"));

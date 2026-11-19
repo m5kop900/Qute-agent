@@ -36,7 +36,12 @@ class AppConfig : public QObject {
     Q_PROPERTY(double overlayOpacity READ overlayOpacity WRITE setOverlayOpacity NOTIFY changed) // 0.3 .. 1.0 (F7.2)
     Q_PROPERTY(int cornerRadius READ cornerRadius WRITE setCornerRadius NOTIFY changed)           // F7.2
     Q_PROPERTY(QString density READ density WRITE setDensity NOTIFY changed)                     // compact | normal | spacious
+    Q_PROPERTY(double spacingScale READ spacingScale NOTIFY changed)                             // read-only, from density
+    Q_PROPERTY(double radiusScale READ radiusScale NOTIFY changed)                               // read-only, from cornerRadius
     Q_PROPERTY(bool animations READ animations WRITE setAnimations NOTIFY changed)               // F7.2
+    Q_PROPERTY(QString fontFamily READ fontFamily WRITE setFontFamily NOTIFY changed)            // "" = system UI font
+    Q_PROPERTY(QString codeFontFamily READ codeFontFamily WRITE setCodeFontFamily NOTIFY changed) // "" = system monospace
+    Q_PROPERTY(QString controlStyle READ controlStyle WRITE setControlStyle NOTIFY changed)      // custom | system | Fusion
     // --- behavior ---
     Q_PROPERTY(bool placeAtCursor READ placeAtCursor WRITE setPlaceAtCursor NOTIFY changed)
     Q_PROPERTY(bool hideOnFocusLoss READ hideOnFocusLoss WRITE setHideOnFocusLoss NOTIFY changed)
@@ -78,7 +83,14 @@ public:
     double overlayOpacity() const { return m_overlayOpacity; }
     int cornerRadius() const { return m_cornerRadius; }
     QString density() const { return m_density; }
+    // Derived from density / cornerRadius for the QML: 1.0 is the default look.
+    double spacingScale() const { return m_density == QLatin1String("compact") ? 0.8
+                                       : m_density == QLatin1String("spacious") ? 1.3 : 1.0; }
+    double radiusScale() const { return m_cornerRadius / 16.0; }
     bool animations() const { return m_animations; }
+    QString fontFamily() const { return m_fontFamily; }
+    QString codeFontFamily() const { return m_codeFontFamily; }
+    QString controlStyle() const { return m_controlStyle; }
     bool placeAtCursor() const { return m_placeAtCursor; }
     int maxAttachmentSizeMB() const { return m_maxAttachmentSizeMB; }
     bool hideOnFocusLoss() const { return m_hideOnFocusLoss; }
@@ -110,6 +122,16 @@ public:
         assign(m_density, d);
     }
     void setAnimations(bool v) { assign(m_animations, v); }
+    void setFontFamily(const QString &v) { assign(m_fontFamily, v.trimmed()); }
+    void setCodeFontFamily(const QString &v) { assign(m_codeFontFamily, v.trimmed()); }
+    void setControlStyle(const QString &v)
+    {
+        // custom = the app's own Basic look (default); system = the platform's Qt style (Breeze on KDE, ...);
+        // Fusion = Qt's portable style. Anything else falls back to custom.
+        const QString s = (v == QLatin1String("system") || v == QLatin1String("Fusion"))
+                              ? v : QStringLiteral("custom");
+        assign(m_controlStyle, s);
+    }
     void setPlaceAtCursor(bool v) { assign(m_placeAtCursor, v); }
     void setHideOnFocusLoss(bool v) { assign(m_hideOnFocusLoss, v); }
     void setAutoCompactEnabled(bool v) { assign(m_autoCompactEnabled, v); }
@@ -150,6 +172,9 @@ private:
     int m_cornerRadius = 16;
     QString m_density = QStringLiteral("compact");
     bool m_animations = true;
+    QString m_fontFamily;
+    QString m_codeFontFamily;
+    QString m_controlStyle = QStringLiteral("custom");
     bool m_placeAtCursor = true;
     bool m_hideOnFocusLoss = false;
     bool m_autoCompactEnabled = true;

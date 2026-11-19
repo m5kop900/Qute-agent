@@ -35,6 +35,8 @@ ApplicationWindow {
 
     property string page: "general"
     property string status: ""
+    property bool dirty: false          // true when the edits have not been written to config.json yet
+    Component.onCompleted: dirty = false
     readonly property var pageModel: [
         { key: "general",    label: qsTr("General"),            glyph: "\u2699" },
         { key: "appearance", label: qsTr("Appearance"),         glyph: "\u2726" },
@@ -45,9 +47,12 @@ ApplicationWindow {
         { key: "about",      label: qsTr("About"),              glyph: "\u24d8" }
     ]
 
-    Connections {                       // keep the preview in sync with pack/variant edits
+    Connections {                       // keep the sprite preview in sync; any edit makes the form dirty
         target: config
-        function onChanged() { packs.load(config.packId, config.variant) }
+        function onChanged() {
+            packs.load(config.packId, config.variant)
+            win.dirty = true
+        }
     }
 
     // ---- navigation ------------------------------------------------------------------------------------
@@ -86,6 +91,16 @@ ApplicationWindow {
                 }
 
                 Item { Layout.fillHeight: true }
+
+                Label {
+                    Layout.fillWidth: true
+                    Layout.margins: 8
+                    wrapMode: Text.Wrap
+                    text: win.dirty ? qsTr("\u25cf Unsaved changes") : qsTr("All changes saved")
+                    font.pixelSize: 11
+                    font.bold: win.dirty
+                    color: win.dirty ? theme.warning : theme.textDim
+                }
 
                 Label {
                     Layout.fillWidth: true
@@ -160,38 +175,224 @@ ApplicationWindow {
                         spacing: 12
                         visible: win.page === "appearance"
 
+                        // ---- Live preview: shows the current colors and fonts before you save -----------------
                         GroupBox {
-                            title: qsTr("Theme")
+                            title: qsTr("Preview")
+                            Layout.fillWidth: true
+
+                            Rectangle {
+                                anchors.fill: parent
+                                implicitHeight: previewCol.implicitHeight + 24
+                                radius: config.cornerRadius
+                                color: theme.panel
+                                border.width: 1
+                                border.color: theme.border
+
+                                ColumnLayout {
+                                    id: previewCol
+                                    anchors.fill: parent
+                                    anchors.margins: 12
+                                    spacing: 8
+
+                                    Rectangle {                    // user prompt bubble
+                                        Layout.alignment: Qt.AlignRight
+                                        radius: Math.min(height / 2, config.cornerRadius)
+                                        color: Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.18)
+                                        border.width: 1
+                                        border.color: theme.accent
+                                        implicitWidth: promptText.implicitWidth + 24
+                                        implicitHeight: promptText.implicitHeight + 12
+                                        Text {
+                                            id: promptText
+                                            anchors.centerIn: parent
+                                            text: qsTr("Refactor this function")
+                                            color: theme.text
+                                            font.family: theme.family
+                                            font.pixelSize: 13
+                                        }
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.Wrap
+                                        text: qsTr("Sure, here is the change. The sprite switches to the working state.")
+                                        color: theme.text
+                                        font.family: theme.family
+                                        font.pixelSize: 13
+                                    }
+
+                                    Rectangle {                    // code block
+                                        Layout.fillWidth: true
+                                        radius: 8
+                                        color: theme.codeBackground
+                                        implicitHeight: codeText.implicitHeight + 16
+                                        Text {
+                                            id: codeText
+                                            anchors.fill: parent
+                                            anchors.margins: 8
+                                            textFormat: Text.RichText
+                                            text: "const name = <font color='" + theme.syntaxString + "'>\"qute\"</font>;<br>"
+                                                  + "return <font color='" + theme.syntaxNumber + "'>42</font> * 2;"
+                                            color: theme.text
+                                            font.family: theme.codeFamily
+                                            font.pixelSize: 12
+                                        }
+                                    }
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 8
+                                        Rectangle {
+                                            Layout.preferredWidth: 8; Layout.preferredHeight: 8
+                                            radius: 4
+                                            color: theme.success
+                                        }
+                                        Text {
+                                            text: qsTr("done")
+                                            color: theme.textDim
+                                            font.family: theme.family
+                                            font.pixelSize: 11
+                                        }
+                                        Item { Layout.fillWidth: true }
+                                        Text {
+                                            text: qsTr("Error state")
+                                            color: theme.danger
+                                            font.family: theme.family
+                                            font.pixelSize: 11
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // ---- Colors -------------------------------------------------------------------------
+                        GroupBox {
+                            title: qsTr("Colors")
                             Layout.fillWidth: true
                             GridLayout {
                                 columns: 2
                                 anchors.fill: parent
                                 columnSpacing: 12
+                                rowSpacing: 10
 
                                 Label { text: qsTr("Color scheme") }
                                 ComboBox {
                                     Layout.fillWidth: true
-                                    model: ["system", "light", "dark"]
-                                    currentIndex: Math.max(0, model.indexOf(config.themeMode))
-                                    onActivated: (i) => config.themeMode = model[i]
+                                    model: [qsTr("Follow system"), qsTr("Light"), qsTr("Dark")]
+                                    readonly property var values: ["system", "light", "dark"]
+                                    currentIndex: Math.max(0, values.indexOf(config.themeMode))
+                                    onActivated: (i) => config.themeMode = values[i]
                                 }
 
                                 Label { text: qsTr("Accent color") }
                                 RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
                                     TextField {
                                         Layout.fillWidth: true
                                         placeholderText: qsTr("empty = system accent, e.g. #6ea8ff")
                                         text: config.accentColor
-                                        onEditingFinished: config.accentColor = text
+                                        onEditingFinished: config.accentColor = text.trim()
                                     }
                                     Rectangle {
                                         Layout.preferredWidth: 24; Layout.preferredHeight: 24
-                                        radius: 5
+                                        radius: 6
                                         color: theme.accent
                                         border.width: 1
                                         border.color: theme.border
                                     }
-                                    Button { text: qsTr("System"); onClicked: config.accentColor = "" }
+                                    Button { text: qsTr("Use system"); onClicked: config.accentColor = "" }
+                                }
+
+                                Item { }
+                                Row {
+                                    spacing: 6
+                                    Repeater {
+                                        model: ["#6ea8ff", "#9b7bff", "#3ecf8e", "#ff9ccc", "#f5a524", "#e5484d"]
+                                        delegate: Rectangle {
+                                            required property string modelData
+                                            width: 22; height: 22; radius: 11
+                                            color: modelData
+                                            border.width: config.accentColor.toLowerCase() === modelData ? 2 : 1
+                                            border.color: config.accentColor.toLowerCase() === modelData ? theme.text : theme.border
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: config.accentColor = modelData
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // ---- Fonts --------------------------------------------------------------------------
+                        GroupBox {
+                            title: qsTr("Fonts")
+                            Layout.fillWidth: true
+                            GridLayout {
+                                columns: 2
+                                anchors.fill: parent
+                                columnSpacing: 12
+                                rowSpacing: 10
+
+                                readonly property var families: [qsTr("System default")].concat(Qt.fontFamilies())
+
+                                Label { text: qsTr("Interface font") }
+                                ComboBox {
+                                    id: uiFontBox
+                                    Layout.fillWidth: true
+                                    model: parent.families
+                                    currentIndex: config.fontFamily === "" ? 0 : Math.max(0, parent.families.indexOf(config.fontFamily))
+                                    onActivated: (i) => config.fontFamily = i === 0 ? "" : parent.families[i]
+                                }
+
+                                Label { text: qsTr("Code font") }
+                                ComboBox {
+                                    id: codeFontBox
+                                    Layout.fillWidth: true
+                                    model: parent.families
+                                    currentIndex: config.codeFontFamily === "" ? 0 : Math.max(0, parent.families.indexOf(config.codeFontFamily))
+                                    onActivated: (i) => config.codeFontFamily = i === 0 ? "" : parent.families[i]
+                                }
+
+                                Item { }
+                                Label {
+                                    Layout.fillWidth: true
+                                    wrapMode: Text.Wrap
+                                    font.pixelSize: 11
+                                    color: theme.textDim
+                                    text: qsTr("System default follows your desktop font settings. The overlay updates live.")
+                                }
+                            }
+                        }
+
+                        // ---- Qt style -----------------------------------------------------------------------
+                        GroupBox {
+                            title: qsTr("Qt style")
+                            Layout.fillWidth: true
+                            GridLayout {
+                                columns: 2
+                                anchors.fill: parent
+                                columnSpacing: 12
+                                rowSpacing: 10
+
+                                Label { text: qsTr("Controls style") }
+                                ComboBox {
+                                    Layout.fillWidth: true
+                                    model: [qsTr("Custom (recommended)"), qsTr("System (your desktop's Qt style)"), qsTr("Fusion")]
+                                    readonly property var values: ["custom", "system", "Fusion"]
+                                    currentIndex: Math.max(0, values.indexOf(config.controlStyle))
+                                    onActivated: (i) => config.controlStyle = values[i]
+                                }
+
+                                Item { }
+                                Label {
+                                    Layout.fillWidth: true
+                                    wrapMode: Text.Wrap
+                                    font.pixelSize: 11
+                                    color: theme.textDim
+                                    text: qsTr("Palette, fonts and accent always come from the theme above. This choice affects built-in widgets and needs a restart of the overlay (qute quit, then qute --daemon).")
                                 }
                             }
                         }
@@ -647,29 +848,66 @@ ApplicationWindow {
                     wrapMode: Text.Wrap
                     elide: Text.ElideRight
                     text: win.status
-                    color: win.status.indexOf(qsTr("Could not")) === 0 ? "#e5484d" : theme.textDim
+                    color: win.status.indexOf(qsTr("Could not")) === 0 ? theme.danger : theme.textDim
                     font.pixelSize: 11
                 }
                 Button {
+                    text: qsTr("Restart overlay")
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Restart the overlay so that saved settings take effect")
+                    onClicked: win.restartOverlay()
+                }
+                Button {
                     text: qsTr("Revert")
+                    enabled: win.dirty
                     onClicked: {
                         config.load()
+                        win.dirty = false
                         win.status = qsTr("Reloaded from %1").arg(config.configPath)
                     }
                 }
                 Button {
-                    text: qsTr("Save")
-                    highlighted: true
+                    text: win.dirty ? qsTr("Save changes") : qsTr("Saved")
+                    highlighted: win.dirty
                     onClicked: {
-                        if (config.save())
-                            win.status = qsTr("Saved. The running overlay reloads this file automatically.")
-                        else {
+                        if (config.save()) {
+                            win.dirty = false
+                            win.status = qsTr("Saved.")
+                            if (overlay.isRunning())
+                                restartDialog.open()     // the overlay applies saved settings only after a restart
+                        } else {
                             win.status = qsTr("Could not save")
                             saveError.open()
                         }
                     }
                 }
             }
+        }
+    }
+
+    // Shown after a save while the overlay runs: its settings are read at start-up.
+    function restartOverlay() {
+        const ok = overlay.restart()
+        win.status = ok ? qsTr("Overlay restarted with the saved settings.")
+                        : qsTr("Could not restart the overlay. Run \"qute quit\", then \"qute --daemon\" in a terminal.")
+    }
+
+    Dialog {
+        id: restartDialog
+        title: qsTr("Apply to the overlay")
+        modal: true
+        anchors.centerIn: parent
+        standardButtons: Dialog.Yes | Dialog.No
+        Component.onCompleted: {
+            standardButton(Dialog.Yes).text = qsTr("Restart now")
+            standardButton(Dialog.No).text = qsTr("Later")
+        }
+        onAccepted: win.restartOverlay()
+        Label {
+            width: Math.min(420, win.width - 120)
+            wrapMode: Text.Wrap
+            text: qsTr("The overlay applies its settings when it starts. Restart it now to apply the changes?")
+            color: theme.text
         }
     }
 

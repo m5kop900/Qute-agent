@@ -42,7 +42,7 @@ ListView {
 
     model: conversation
     clip: true
-    spacing: Math.round(10 * s)
+    spacing: Math.round(10 * s * config.spacingScale)
     boundsBehavior: ListView.StopAtBounds
     // Keep delegates alive around the viewport. With lazy delegates of different heights, Qt estimates the
     // unloaded ones, so the scrollbar thumb jumps as you drag. A large cache keeps the measured heights.
@@ -127,7 +127,7 @@ ListView {
                             anchors.right: parent.right
                             width: Math.min(userText.implicitWidth + Math.round(20 * view.s), parent.width * 0.88)
                             height: userText.implicitHeight + Math.round(16 * view.s)
-                            radius: Math.round(12 * view.s)
+                            radius: Math.round(12 * view.s * config.radiusScale)
                             color: Qt.rgba(view.theme.accent.r, view.theme.accent.g, view.theme.accent.b, 0.16)
                             border.width: 1
                             border.color: Qt.rgba(view.theme.accent.r, view.theme.accent.g, view.theme.accent.b, 0.35)
@@ -158,7 +158,7 @@ ListView {
                                     required property string modelData
                                     width: chipText.implicitWidth + Math.round(16 * view.s)
                                     height: chipText.implicitHeight + Math.round(8 * view.s)
-                                    radius: Math.round(8 * view.s)
+                                    radius: Math.round(8 * view.s * config.radiusScale)
                                     color: Qt.rgba(view.theme.text.r, view.theme.text.g, view.theme.text.b, 0.06)
                                     border.width: 1
                                     border.color: view.theme.border
@@ -200,7 +200,7 @@ ListView {
                         Rectangle {
                             width: parent.width
                             height: asstText.implicitHeight + Math.round(16 * view.s)
-                            radius: Math.round(12 * view.s)
+                            radius: Math.round(12 * view.s * config.radiusScale)
                             color: view.theme.input
                             border.width: 1
                             border.color: view.theme.border
@@ -241,7 +241,7 @@ ListView {
                             id: header
                             width: parent.width
                             height: Math.round(26 * view.s)
-                            radius: Math.round(8 * view.s)
+                            radius: Math.round(8 * view.s * config.radiusScale)
                             color: headHover.hovered ? Qt.rgba(view.theme.text.r, view.theme.text.g, view.theme.text.b, 0.06)
                                                      : "transparent"
 
@@ -288,7 +288,7 @@ ListView {
                             visible: reason.open
                             width: parent.width
                             height: visible ? Math.min(reasonText.implicitHeight, Math.round(160 * view.s)) + Math.round(14 * view.s) : 0
-                            radius: Math.round(10 * view.s)
+                            radius: Math.round(10 * view.s * config.radiusScale)
                             color: Qt.rgba(view.theme.text.r, view.theme.text.g, view.theme.text.b, 0.04)
                             border.width: 1
                             border.color: view.theme.border
@@ -327,7 +327,7 @@ ListView {
                     id: toolCard
                     width: view.width
                     implicitHeight: toolCol.implicitHeight + Math.round(12 * view.s)
-                    radius: Math.round(9 * view.s)
+                    radius: Math.round(9 * view.s * config.radiusScale)
                     color: Qt.rgba(view.theme.text.r, view.theme.text.g, view.theme.text.b, 0.04)
                     border.width: 1
                     border.color: view.theme.border
@@ -364,7 +364,7 @@ ListView {
                                 Label {
                                     text: model.status
                                     font.pixelSize: Math.round(9.5 * view.s)
-                                    color: model.status === "error" ? "#e5484d"
+                                    color: model.status === "error" ? view.theme.danger
                                          : model.status === "running" ? view.theme.accent
                                          : view.theme.textDim
                                 }
@@ -388,7 +388,7 @@ ListView {
                             visible: toolCard.open
                             width: parent.width
                             height: visible ? Math.min(toolFull.implicitHeight, Math.round(260 * view.s)) + Math.round(12 * view.s) : 0
-                            radius: Math.round(7 * view.s)
+                            radius: Math.round(7 * view.s * config.radiusScale)
                             color: Qt.rgba(view.theme.text.r, view.theme.text.g, view.theme.text.b, 0.05)
                             border.width: 1
                             border.color: view.theme.border
@@ -411,7 +411,7 @@ ListView {
                                     selectByMouse: true
                                     wrapMode: TextEdit.Wrap
                                     textFormat: TextEdit.PlainText
-                                    font.family: "monospace"
+                                    font.family: view.theme.codeFamily
                                     font.pixelSize: Math.round(10.5 * view.s)
                                     color: view.theme.text
                                 }
@@ -428,7 +428,7 @@ ListView {
                 Rectangle {
                     width: view.width
                     implicitHeight: reqCol.implicitHeight + Math.round(12 * view.s)
-                    radius: Math.round(9 * view.s)
+                    radius: Math.round(9 * view.s * config.radiusScale)
                     color: Qt.rgba(view.theme.accent.r, view.theme.accent.g, view.theme.accent.b, 0.08)
                     border.width: 1
                     border.color: Qt.rgba(view.theme.accent.r, view.theme.accent.g, view.theme.accent.b, 0.35)
@@ -481,7 +481,7 @@ ListView {
                         id: compactCard
                         width: parent.width
                         height: compactCol.implicitHeight + Math.round(16 * view.s)
-                        radius: Math.round(10 * view.s)
+                        radius: Math.round(10 * view.s * config.radiusScale)
                         color: Qt.rgba(view.theme.accent.r, view.theme.accent.g, view.theme.accent.b, 0.07)
                         border.width: 1
                         border.color: Qt.rgba(view.theme.accent.r, view.theme.accent.g, view.theme.accent.b, 0.3)
@@ -571,7 +571,7 @@ ListView {
                     text: model.text
                     font.pixelSize: Math.round(10.5 * view.s)
                     font.italic: true
-                    color: model.status === "error" ? "#e5484d" : view.theme.textDim
+                    color: model.status === "error" ? view.theme.danger : view.theme.textDim
                 }
         
         }

@@ -1,0 +1,18 @@
+{
+    "classes": [
+        {
+            "className": "GnomeShell",
+            "lineNumber": 10,
+            "object": true,
+            "qualifiedClassName": "GnomeShell",
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "GenericShell"
+                }
+            ]
+        }
+    ],
+    "inputFile": "gnomeshell.h",
+    "outputRevision": 69
+}

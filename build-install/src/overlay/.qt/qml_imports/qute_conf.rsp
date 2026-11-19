@@ -1,0 +1,14 @@
+-rootPath
+/home/mkop/Downloads/qute/qute/src/overlay
+-cmake-output
+-output-file
+/home/mkop/Downloads/qute/qute/build-install/src/overlay/.qt/qml_imports/qute_conf.cmake
+-importPath
+/home/mkop/Downloads/qute/qute/build-install/src/overlay
+-importPath
+/home/mkop/Downloads/qute/qute/build-install/src/overlay/Qute/Overlay
+-importPath
+/usr/lib/qt6/qml
+-qrcFiles
+/home/mkop/Downloads/qute/qute/build-install/src/overlay/.qt/rcc/qmake_Qute_Overlay.qrc
+/home/mkop/Downloads/qute/qute/build-install/src/overlay/.qt/rcc/qute_raw_qml_0.qrc

@@ -14,8 +14,8 @@ Item {
 
     // Warning levels from the roadmap (F2.4): amber from 80 %, red from 95 %.
     readonly property color ringColor: percent < 0 ? theme.border
-                                                : percent >= 95 ? "#e5484d"
-                                                : percent >= 80 ? "#e8a33d"
+                                                : percent >= 95 ? theme.danger
+                                                : percent >= 80 ? theme.warning
                                                 : theme.accent
 
     implicitWidth: Math.round(22 * s)

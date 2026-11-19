@@ -104,7 +104,7 @@ Popup {
 
     background: Rectangle {
         color: root.theme.input
-        radius: Math.round(10 * root.s)
+        radius: Math.round(10 * root.s * config.radiusScale)
         border.width: 1
         border.color: root.theme.border
     }
@@ -151,7 +151,7 @@ Popup {
             leftPadding: Math.round(8 * root.s)
             rightPadding: Math.round(8 * root.s)
             background: Rectangle {
-                radius: Math.round(7 * root.s)
+                radius: Math.round(7 * root.s * config.radiusScale)
                 color: Qt.rgba(root.theme.text.r, root.theme.text.g, root.theme.text.b, 0.05)
                 border.width: 1
                 border.color: search.activeFocus ? root.theme.accent : "transparent"
@@ -186,7 +186,7 @@ Popup {
                 readonly property bool showGroup: root.grouped && modelData.group !== undefined
                     && (index === 0 || ListView.view.model[index - 1].group !== modelData.group)
                 height: Math.round(32 * root.s) + (showGroup ? groupLabel.implicitHeight : 0)
-                radius: Math.round(6 * root.s)
+                radius: Math.round(6 * root.s * config.radiusScale)
                 color: modelData.key === root.currentKey
                        ? Qt.rgba(root.theme.accent.r, root.theme.accent.g, root.theme.accent.b, 0.13)
                        : ListView.isCurrentItem

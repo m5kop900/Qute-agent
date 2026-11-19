@@ -1,0 +1,42 @@
+# Maintainer: Qute Agent maintainers <maintainer@example.com>
+#
+# Release package built from the source archive qute-agent-<pkgver>.tar.xz.
+# Usage:
+#   cp qute-agent-0.1.0.tar.xz packaging/arch/     # the archive next to this file
+#   cd packaging/arch && makepkg -si
+#
+# The AUR git package (packaging/aur/qute-agent-git) tracks the latest commit instead.
+pkgname=qute-agent
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Animated desktop companion for opencode (sprite overlay + settings app)"
+arch=('x86_64' 'aarch64')
+url="https://github.com/m5kop900/Qute-agent"
+license=('custom')
+depends=('qt6-base' 'qt6-declarative' 'qt6-svg')
+makedepends=('cmake' 'ninja')
+optdepends=('opencode: the local agent server this app talks to')
+provides=('qute-agent')
+conflicts=('qute-agent-git')
+options=('!debug')
+source=("$pkgname-$pkgver.tar.xz")
+sha256sums=('SKIP')
+
+build() {
+    cmake -S "$srcdir/$pkgname-$pkgver" -B build -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DQUTE_BUILD_TESTS=OFF
+    cmake --build build
+}
+
+check() {
+    cmake -S "$srcdir/$pkgname-$pkgver" -B build-test -G Ninja -DCMAKE_BUILD_TYPE=Release -DQUTE_BUILD_TESTS=ON
+    cmake --build build-test
+    ctest --test-dir build-test --output-on-failure
+}
+
+package() {
+    DESTDIR="$pkgdir" cmake --install build --strip
+    install -Dm644 "$srcdir/$pkgname-$pkgver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE" 2>/dev/null || true
+}

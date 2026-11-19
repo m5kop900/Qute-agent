@@ -1,0 +1,249 @@
+{
+    "classes": [
+        {
+            "className": "OpenCodeCatalog",
+            "lineNumber": 16,
+            "methods": [
+                {
+                    "access": "public",
+                    "index": 6,
+                    "lineNumber": 36,
+                    "name": "refresh",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "query",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 7,
+                    "lineNumber": 37,
+                    "name": "searchFiles",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "providerID",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "modelID",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 8,
+                    "isConst": true,
+                    "lineNumber": 39,
+                    "name": "modelByRef",
+                    "returnType": "QVariantMap"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "id",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 9,
+                    "isConst": true,
+                    "lineNumber": 40,
+                    "name": "agentById",
+                    "returnType": "QVariantMap"
+                }
+            ],
+            "object": true,
+            "properties": [
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 0,
+                    "lineNumber": 18,
+                    "name": "commands",
+                    "notify": "commandsChanged",
+                    "override": false,
+                    "read": "commands",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QVariantList",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 1,
+                    "lineNumber": 19,
+                    "name": "slashItems",
+                    "notify": "commandsChanged",
+                    "override": false,
+                    "read": "slashItems",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QVariantList",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 2,
+                    "lineNumber": 20,
+                    "name": "models",
+                    "notify": "modelsChanged",
+                    "override": false,
+                    "read": "models",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QVariantList",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 3,
+                    "lineNumber": 21,
+                    "name": "agents",
+                    "notify": "agentsChanged",
+                    "override": false,
+                    "read": "agents",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QVariantList",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 4,
+                    "lineNumber": 22,
+                    "name": "primaryAgents",
+                    "notify": "agentsChanged",
+                    "override": false,
+                    "read": "primaryAgents",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QVariantList",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 5,
+                    "lineNumber": 23,
+                    "name": "files",
+                    "notify": "filesChanged",
+                    "override": false,
+                    "read": "files",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QVariantList",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 6,
+                    "lineNumber": 24,
+                    "name": "defaultModel",
+                    "notify": "defaultModelChanged",
+                    "override": false,
+                    "read": "defaultModel",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QVariantMap",
+                    "user": false,
+                    "virtual": false
+                }
+            ],
+            "qualifiedClassName": "OpenCodeCatalog",
+            "signals": [
+                {
+                    "access": "public",
+                    "index": 0,
+                    "lineNumber": 52,
+                    "name": "commandsChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 1,
+                    "lineNumber": 53,
+                    "name": "modelsChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 2,
+                    "lineNumber": 54,
+                    "name": "agentsChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 3,
+                    "lineNumber": 55,
+                    "name": "filesChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 4,
+                    "lineNumber": 56,
+                    "name": "defaultModelChanged",
+                    "returnType": "void"
+                }
+            ],
+            "slots": [
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "type",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "properties",
+                            "type": "QJsonObject"
+                        }
+                    ],
+                    "index": 5,
+                    "lineNumber": 49,
+                    "name": "onEvent",
+                    "returnType": "void"
+                }
+            ],
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QObject"
+                }
+            ]
+        }
+    ],
+    "inputFile": "opencodecatalog.h",
+    "outputRevision": 69
+}

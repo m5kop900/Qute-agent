@@ -30,7 +30,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: Math.round(10 * root.s)
+        radius: Math.round(10 * root.s * config.radiusScale)
         color: root.theme.input
         border.width: 1
         border.color: root.theme.border
@@ -55,7 +55,7 @@ Item {
 
             width: ListView.view.width
             height: root.rowHeight
-            radius: Math.round(6 * root.s)
+            radius: Math.round(6 * root.s * config.radiusScale)
             color: row.index === root.index
                    ? Qt.rgba(root.theme.accent.r, root.theme.accent.g, root.theme.accent.b, 0.14)
                    : "transparent"

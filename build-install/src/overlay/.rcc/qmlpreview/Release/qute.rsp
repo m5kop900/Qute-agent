@@ -1,0 +1,6 @@
+--interactive
+--resource
+/home/mkop/Downloads/qute/qute/build-install/src/overlay/.qt/rcc/qmake_Qute_Overlay.qrc
+--resource
+/home/mkop/Downloads/qute/qute/build-install/src/overlay/.qt/rcc/qute_raw_qml_0.qrc
+/home/mkop/Downloads/qute/qute/build-install/src/overlay/qute

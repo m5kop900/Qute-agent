@@ -1,0 +1,307 @@
+{
+	"BUILD_DIR" : "/home/mkop/Downloads/qute/qute/build-install/src/core/qute_core_autogen",
+	"CMAKE_BINARY_DIR" : "/home/mkop/Downloads/qute/qute/build-install",
+	"CMAKE_CURRENT_BINARY_DIR" : "/home/mkop/Downloads/qute/qute/build-install/src/core",
+	"CMAKE_CURRENT_SOURCE_DIR" : "/home/mkop/Downloads/qute/qute/src/core",
+	"CMAKE_EXECUTABLE" : "/usr/sbin/cmake",
+	"CMAKE_LIST_FILES" : [ "/home/mkop/Downloads/qute/qute/src/core/CMakeLists.txt" ],
+	"CMAKE_SOURCE_DIR" : "/home/mkop/Downloads/qute/qute",
+	"CROSS_CONFIG" : false,
+	"CXX_MODULE_UNITS" : [],
+	"DEP_FILE" : "/home/mkop/Downloads/qute/qute/build-install/src/core/qute_core_autogen/deps",
+	"DEP_FILE_RULE_NAME" : "qute_core_autogen/timestamp",
+	"HEADERS" : 
+	[
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/agentstate.h",
+			"MU",
+			"EWIEGA46WW/moc_agentstate.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/appconfig.h",
+			"MU",
+			"EWIEGA46WW/moc_appconfig.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/attachmentmodel.h",
+			"MU",
+			"EWIEGA46WW/moc_attachmentmodel.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/compactionpolicy.h",
+			"MU",
+			"EWIEGA46WW/moc_compactionpolicy.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/composertokens.h",
+			"MU",
+			"EWIEGA46WW/moc_composertokens.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/conversationmodel.h",
+			"MU",
+			"EWIEGA46WW/moc_conversationmodel.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/opencodecatalog.h",
+			"MU",
+			"EWIEGA46WW/moc_opencodecatalog.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/opencodeclient.h",
+			"MU",
+			"EWIEGA46WW/moc_opencodeclient.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/opencodelocator.h",
+			"MU",
+			"EWIEGA46WW/moc_opencodelocator.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/sessionstore.h",
+			"MU",
+			"EWIEGA46WW/moc_sessionstore.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/singleinstance.h",
+			"MU",
+			"EWIEGA46WW/moc_singleinstance.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/slashcommands.h",
+			"MU",
+			"EWIEGA46WW/moc_slashcommands.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/spritepackmanager.h",
+			"MU",
+			"EWIEGA46WW/moc_spritepackmanager.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/sseparser.h",
+			"MU",
+			"EWIEGA46WW/moc_sseparser.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/theme.h",
+			"MU",
+			"EWIEGA46WW/moc_theme.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/platform/genericshell.h",
+			"MU",
+			"IAXHYV55OK/moc_genericshell.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/platform/gnomeshell.h",
+			"MU",
+			"IAXHYV55OK/moc_gnomeshell.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/platform/kwinshell.h",
+			"MU",
+			"IAXHYV55OK/moc_kwinshell.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/platform/platformshell.h",
+			"MU",
+			"IAXHYV55OK/moc_platformshell.cpp",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/platform/terminallauncher.h",
+			"MU",
+			"IAXHYV55OK/moc_terminallauncher.cpp",
+			null
+		]
+	],
+	"HEADER_EXTENSIONS" : [ "h", "hh", "h++", "hm", "hpp", "hxx", "in", "txx" ],
+	"INCLUDE_DIR" : "/home/mkop/Downloads/qute/qute/build-install/src/core/qute_core_autogen/include",
+	"MOC_COMPILATION_FILE" : "/home/mkop/Downloads/qute/qute/build-install/src/core/qute_core_autogen/mocs_compilation.cpp",
+	"MOC_DEFINITIONS" : 
+	[
+		"QT_CORE_LIB",
+		"QT_DBUS_LIB",
+		"QT_GUI_LIB",
+		"QT_NETWORK_LIB",
+		"QT_NO_DEBUG",
+		"QT_OPENGL_LIB",
+		"QT_QMLINTEGRATION_LIB",
+		"QT_QML_LIB",
+		"QT_QUICK_LIB",
+		"QUTE_DEV_PACKS_DIR=\"/home/mkop/Downloads/qute/qute/assets/spritepacks\"",
+		"QUTE_HAVE_DBUS",
+		"QUTE_INSTALL_PACKS_DIR=\"/home/mkop/.local/share/qute/spritepacks\"",
+		"QUTE_VERSION=\"0.1.0\""
+	],
+	"MOC_DEPEND_FILTERS" : 
+	[
+		[
+			"Q_PLUGIN_METADATA",
+			"[\n][ \t]*Q_PLUGIN_METADATA[ \t]*\\([^\\)]*FILE[ \t]*\"([^\"]+)\""
+		]
+	],
+	"MOC_INCLUDES" : 
+	[
+		"/home/mkop/Downloads/qute/qute/src/core",
+		"/home/mkop/Downloads/qute/qute/src/platform",
+		"/usr/include/qt6/QtCore",
+		"/usr/include/qt6",
+		"/usr/lib/qt6/mkspecs/linux-g++",
+		"/usr/include/qt6/QtGui",
+		"/usr/include/qt6/QtQml",
+		"/usr/include/qt6/QtQmlIntegration",
+		"/usr/include/qt6/QtNetwork",
+		"/usr/include/qt6/QtQuick",
+		"/usr/include/qt6/QtOpenGL",
+		"/usr/include/qt6/QtDBus",
+		"/usr/include",
+		"/usr/include/c++/16",
+		"/usr/include/c++/16/x86_64-pc-linux-gnu",
+		"/usr/include/c++/16/backward",
+		"/usr/lib/gcc/x86_64-pc-linux-gnu/16/include",
+		"/usr/local/include"
+	],
+	"MOC_MACRO_NAMES" : 
+	[
+		"Q_OBJECT",
+		"Q_GADGET",
+		"Q_NAMESPACE",
+		"Q_NAMESPACE_EXPORT",
+		"Q_GADGET_EXPORT",
+		"Q_ENUM_NS"
+	],
+	"MOC_OPTIONS" : [ "--output-json" ],
+	"MOC_PATH_PREFIX" : false,
+	"MOC_PREDEFS_CMD" : 
+	[
+		"/usr/sbin/c++",
+		"-std=gnu++20",
+		"-w",
+		"-dM",
+		"-E",
+		"/usr/share/cmake/Modules/CMakeCXXCompilerABI.cpp"
+	],
+	"MOC_PREDEFS_FILE" : "/home/mkop/Downloads/qute/qute/build-install/src/core/qute_core_autogen/moc_predefs.h",
+	"MOC_RELAXED_MODE" : false,
+	"MOC_SKIP" : [],
+	"MULTI_CONFIG" : false,
+	"PARALLEL" : 20,
+	"PARSE_CACHE_FILE" : "/home/mkop/Downloads/qute/qute/build-install/src/core/CMakeFiles/qute_core_autogen.dir/ParseCache.txt",
+	"QT_MOC_EXECUTABLE" : "/usr/lib/qt6/moc",
+	"QT_UIC_EXECUTABLE" : "",
+	"QT_VERSION_MAJOR" : 6,
+	"QT_VERSION_MINOR" : 12,
+	"SETTINGS_FILE" : "/home/mkop/Downloads/qute/qute/build-install/src/core/CMakeFiles/qute_core_autogen.dir/AutogenUsed.txt",
+	"SOURCES" : 
+	[
+		[ "/home/mkop/Downloads/qute/qute/src/core/agentstate.cpp", "MU", null ],
+		[ "/home/mkop/Downloads/qute/qute/src/core/appconfig.cpp", "MU", null ],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/attachmentmodel.cpp",
+			"MU",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/compactionpolicy.cpp",
+			"MU",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/composertokens.cpp",
+			"MU",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/conversationmodel.cpp",
+			"MU",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/opencodecatalog.cpp",
+			"MU",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/opencodeclient.cpp",
+			"MU",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/opencodelocator.cpp",
+			"MU",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/sessionstore.cpp",
+			"MU",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/singleinstance.cpp",
+			"MU",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/slashcommands.cpp",
+			"MU",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/core/spritepackmanager.cpp",
+			"MU",
+			null
+		],
+		[ "/home/mkop/Downloads/qute/qute/src/core/sseparser.cpp", "MU", null ],
+		[ "/home/mkop/Downloads/qute/qute/src/core/theme.cpp", "MU", null ],
+		[
+			"/home/mkop/Downloads/qute/qute/src/platform/genericshell.cpp",
+			"MU",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/platform/gnomeshell.cpp",
+			"MU",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/platform/kwinshell.cpp",
+			"MU",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/platform/platformshell.cpp",
+			"MU",
+			null
+		],
+		[
+			"/home/mkop/Downloads/qute/qute/src/platform/terminallauncher.cpp",
+			"MU",
+			null
+		]
+	],
+	"UIC_OPTIONS" : [],
+	"UIC_SEARCH_PATHS" : [],
+	"UIC_SKIP" : [],
+	"UIC_UI_FILES" : [],
+	"USE_BETTER_GRAPH" : true,
+	"VERBOSITY" : 0
+}

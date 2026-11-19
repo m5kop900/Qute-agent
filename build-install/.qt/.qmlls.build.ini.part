@@ -1,0 +1,7 @@
+1\sourcePath="/home/mkop/Downloads/qute/qute/src/overlay"
+1\importPaths="/home/mkop/Downloads/qute/qute/build-install/src/overlay:/home/mkop/Downloads/qute/qute/build-install/src/overlay/Qute/Overlay:/home/mkop/Downloads/qute/qute/build-install:/usr/lib/qt6/qml"
+1\resourceFiles="/home/mkop/Downloads/qute/qute/build-install/src/overlay/.qt/rcc/qmake_Qute_Overlay.qrc:/home/mkop/Downloads/qute/qute/build-install/src/overlay/.qt/rcc/qute_raw_qml_0.qrc"
+2\sourcePath="/home/mkop/Downloads/qute/qute/src/settings"
+2\importPaths="/home/mkop/Downloads/qute/qute/build-install/src/settings:/home/mkop/Downloads/qute/qute/build-install/src/settings/Qute/Settings:/home/mkop/Downloads/qute/qute/build-install:/usr/lib/qt6/qml"
+2\resourceFiles="/home/mkop/Downloads/qute/qute/build-install/src/settings/.qt/rcc/qmake_Qute_Settings.qrc:/home/mkop/Downloads/qute/qute/build-install/src/settings/.qt/rcc/qute_settings_raw_qml_0.qrc"
+size=2

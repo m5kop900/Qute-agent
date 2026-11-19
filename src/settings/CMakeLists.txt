@@ -1,5 +1,7 @@
 qt_add_executable(qute_settings
     main.cpp
+    overlaycontrol.cpp
+    overlaycontrol.h
 )
 set_target_properties(qute_settings PROPERTIES OUTPUT_NAME "qute-settings")
 

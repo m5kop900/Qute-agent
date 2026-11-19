@@ -1,0 +1,22 @@
+module Qute.Overlay
+typeinfo qute.qmltypes
+prefer :/qt/qml/Qute/Overlay/
+Main 1.0 Main.qml
+SpriteView 1.0 SpriteView.qml
+Composer 1.0 Composer.qml
+InlineList 1.0 InlineList.qml
+MessageText 1.0 MessageText.qml
+SelectableText 1.0 SelectableText.qml
+ThemedMenu 1.0 ThemedMenu.qml
+CodeHighlight 1.0 CodeHighlight.js
+ControlChip 1.0 ControlChip.qml
+ContextRing 1.0 ContextRing.qml
+PickerPopup 1.0 PickerPopup.qml
+ConversationView 1.0 ConversationView.qml
+AttachmentStrip 1.0 AttachmentStrip.qml
+AttachmentChip 1.0 AttachmentChip.qml
+Theme 1.0 Theme.qml
+MenuStrip 1.0 MenuStrip.qml
+Hint 1.0 Hint.qml
+PillButton 1.0 PillButton.qml
+

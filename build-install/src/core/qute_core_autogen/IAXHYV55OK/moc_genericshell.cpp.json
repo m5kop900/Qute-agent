@@ -1,0 +1,18 @@
+{
+    "classes": [
+        {
+            "className": "GenericShell",
+            "lineNumber": 7,
+            "object": true,
+            "qualifiedClassName": "GenericShell",
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "PlatformShell"
+                }
+            ]
+        }
+    ],
+    "inputFile": "genericshell.h",
+    "outputRevision": 69
+}

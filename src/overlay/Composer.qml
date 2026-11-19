@@ -255,7 +255,7 @@ Item {
     Rectangle {
         id: box
         anchors.fill: parent
-        radius: Math.round(12 * s)
+        radius: Math.round(12 * s * config.radiusScale)
         color: root.theme.input
         border.width: 1
         border.color: root.engaged ? root.theme.accent

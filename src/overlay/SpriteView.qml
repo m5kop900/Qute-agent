@@ -22,7 +22,8 @@ Item {
     // Tuning, all in one place (same for every pack).
     readonly property int fadeMs: 110           // fade-in of the new state
     readonly property int minDwellMs: 280       // a calm state stays at least this long before the next one
-    readonly property int idleFpsCap: 5         // idle/offline never animate faster than this
+    readonly property int idleFpsCap: 12        // idle/offline never animate faster than this
+    readonly property real fpsBoost: 1.6        // all sprite animations run this much faster than the pack says
 
     readonly property int frameW: packs.frameWidth
     readonly property int frameH: packs.frameHeight
@@ -106,7 +107,8 @@ Item {
 
         Timer {
             readonly property real fps: (layer.isTop && root.isCalm(layer.name))
-                                        ? Math.min(layer.info.fps, root.idleFpsCap) : layer.info.fps
+                                        ? Math.min(layer.info.fps * root.fpsBoost, root.idleFpsCap)
+                                        : layer.info.fps * root.fpsBoost
             interval: Math.round(1000 / Math.max(1, fps))
             running: (layer.isTop || layer.isUnder) && root.running && layer.frames > 1
             repeat: true

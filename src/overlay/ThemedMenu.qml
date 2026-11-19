@@ -16,7 +16,7 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
     background: Rectangle {
-        radius: Math.round(10 * root.s)
+        radius: Math.round(10 * root.s * config.radiusScale)
         color: root.theme.panel
         border.width: 1
         border.color: root.theme.border
@@ -31,7 +31,7 @@ Popup {
                 required property var modelData
                 width: Math.round(132 * root.s)
                 height: Math.round(28 * root.s)
-                radius: Math.round(6 * root.s)
+                radius: Math.round(6 * root.s * config.radiusScale)
                 color: area.containsMouse && row.modelData.enabled
                        ? Qt.rgba(root.theme.accent.r, root.theme.accent.g, root.theme.accent.b, 0.14)
                        : "transparent"

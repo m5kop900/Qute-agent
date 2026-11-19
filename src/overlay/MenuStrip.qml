@@ -166,7 +166,7 @@ Item {
     Rectangle {
         id: strip
         anchors.fill: parent
-        radius: Math.round(9 * s)
+        radius: Math.round(9 * s * config.radiusScale)
         color: root.theme.input
         border.width: 1
         border.color: root.enabled ? root.theme.border : Qt.rgba(root.theme.text.r, root.theme.text.g, root.theme.text.b, 0.18)

@@ -1,0 +1,475 @@
+{
+    "classes": [
+        {
+            "className": "OpenCodeClient",
+            "lineNumber": 29,
+            "methods": [
+                {
+                    "access": "public",
+                    "index": 13,
+                    "isConst": true,
+                    "lineNumber": 49,
+                    "name": "isV2Server",
+                    "returnType": "bool"
+                },
+                {
+                    "access": "public",
+                    "index": 14,
+                    "lineNumber": 51,
+                    "name": "start",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "text",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 15,
+                    "lineNumber": 52,
+                    "name": "sendPrompt",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "text",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "files",
+                            "type": "QVariantList"
+                        },
+                        {
+                            "name": "agents",
+                            "type": "QVariantList"
+                        }
+                    ],
+                    "index": 16,
+                    "lineNumber": 56,
+                    "name": "sendPromptWithFiles",
+                    "returnType": "bool"
+                },
+                {
+                    "access": "public",
+                    "index": 17,
+                    "lineNumber": 57,
+                    "name": "abort",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "permissionId",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "response",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 18,
+                    "lineNumber": 58,
+                    "name": "answerPermission",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "formId",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 19,
+                    "lineNumber": 59,
+                    "name": "cancelForm",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "agent",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 20,
+                    "lineNumber": 62,
+                    "name": "selectAgent",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "providerID",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "modelID",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "variant",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 21,
+                    "lineNumber": 63,
+                    "name": "selectModel",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 22,
+                    "lineNumber": 64,
+                    "name": "newSession",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 23,
+                    "lineNumber": 66,
+                    "name": "listSessions",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "id",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 24,
+                    "lineNumber": 67,
+                    "name": "switchSession",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "name",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "arguments",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "files",
+                            "type": "QVariantList"
+                        },
+                        {
+                            "name": "agents",
+                            "type": "QVariantList"
+                        }
+                    ],
+                    "index": 25,
+                    "lineNumber": 69,
+                    "name": "runServerCommand",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 26,
+                    "lineNumber": 72,
+                    "name": "compactSession",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "limit",
+                            "type": "int"
+                        }
+                    ],
+                    "index": 27,
+                    "lineNumber": 75,
+                    "name": "requestMessageHistory",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 28,
+                    "isCloned": true,
+                    "lineNumber": 75,
+                    "name": "requestMessageHistory",
+                    "returnType": "void"
+                }
+            ],
+            "object": true,
+            "properties": [
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 0,
+                    "lineNumber": 31,
+                    "name": "connected",
+                    "notify": "connectedChanged",
+                    "override": false,
+                    "read": "connected",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "bool",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 1,
+                    "lineNumber": 32,
+                    "name": "responseText",
+                    "notify": "responseTextChanged",
+                    "override": false,
+                    "read": "responseText",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 2,
+                    "lineNumber": 33,
+                    "name": "sessionId",
+                    "notify": "sessionChanged",
+                    "override": false,
+                    "read": "sessionId",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 3,
+                    "lineNumber": 34,
+                    "name": "lastError",
+                    "notify": "lastErrorChanged",
+                    "override": false,
+                    "read": "lastError",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 4,
+                    "lineNumber": 35,
+                    "name": "opencodeMissing",
+                    "notify": "opencodeMissingChanged",
+                    "override": false,
+                    "read": "opencodeMissing",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "bool",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 5,
+                    "lineNumber": 36,
+                    "name": "apiName",
+                    "notify": "connectedChanged",
+                    "override": false,
+                    "read": "apiName",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false
+                }
+            ],
+            "qualifiedClassName": "OpenCodeClient",
+            "signals": [
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "sessions",
+                            "type": "QVariantList"
+                        }
+                    ],
+                    "index": 0,
+                    "lineNumber": 84,
+                    "name": "sessionsListed",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "message",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 1,
+                    "lineNumber": 85,
+                    "name": "requestFailed",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "connected",
+                            "type": "bool"
+                        }
+                    ],
+                    "index": 2,
+                    "lineNumber": 86,
+                    "name": "connectedChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 3,
+                    "lineNumber": 87,
+                    "name": "responseTextChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 4,
+                    "lineNumber": 88,
+                    "name": "sessionChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 5,
+                    "lineNumber": 89,
+                    "name": "lastErrorChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 6,
+                    "lineNumber": 90,
+                    "name": "opencodeMissingChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "text",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "attachmentNames",
+                            "type": "QStringList"
+                        }
+                    ],
+                    "index": 7,
+                    "lineNumber": 91,
+                    "name": "promptSent",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "type",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "properties",
+                            "type": "QJsonObject"
+                        }
+                    ],
+                    "index": 8,
+                    "lineNumber": 93,
+                    "name": "serverEvent",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "messages",
+                            "type": "QJsonArray"
+                        }
+                    ],
+                    "index": 9,
+                    "lineNumber": 95,
+                    "name": "messageHistoryReceived",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 10,
+                    "lineNumber": 97,
+                    "name": "historyFailed",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 11,
+                    "lineNumber": 99,
+                    "name": "sessionsListFailed",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "path",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "document",
+                            "type": "QJsonDocument"
+                        },
+                        {
+                            "name": "status",
+                            "type": "int"
+                        }
+                    ],
+                    "index": 12,
+                    "lineNumber": 101,
+                    "name": "jsonFetched",
+                    "returnType": "void"
+                }
+            ],
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QObject"
+                }
+            ]
+        }
+    ],
+    "inputFile": "opencodeclient.h",
+    "outputRevision": 69
+}

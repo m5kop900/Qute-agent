@@ -18,7 +18,7 @@ Rectangle {
 
     implicitHeight: Math.round(22 * s)
     implicitWidth: Math.min(maxTextWidth + Math.round(34 * s), row.implicitWidth + Math.round(16 * s))
-    radius: Math.round(6 * s)
+    radius: Math.round(6 * s * config.radiusScale)
     color: active ? Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.16)
                   : hover.hovered && interactive ? Qt.rgba(theme.text.r, theme.text.g, theme.text.b, 0.06)
                   : "transparent"

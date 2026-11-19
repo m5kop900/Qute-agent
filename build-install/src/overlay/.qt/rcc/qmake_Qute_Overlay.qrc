@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/qt/qml/Qute/Overlay">
+    <file alias="qmldir">/home/mkop/Downloads/qute/qute/build-install/src/overlay/Qute/Overlay/qmldir</file>
+  </qresource>
+</RCC>
+

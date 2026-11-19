@@ -1,0 +1,12 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/mkop/Downloads/qute/qute/build-install/cmake_install.cmake",
+		"/home/mkop/Downloads/qute/qute/build-install/src/core/cmake_install.cmake",
+		"/home/mkop/Downloads/qute/qute/build-install/src/platform/cmake_install.cmake",
+		"/home/mkop/Downloads/qute/qute/build-install/src/setup/cmake_install.cmake",
+		"/home/mkop/Downloads/qute/qute/build-install/src/overlay/cmake_install.cmake",
+		"/home/mkop/Downloads/qute/qute/build-install/src/settings/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

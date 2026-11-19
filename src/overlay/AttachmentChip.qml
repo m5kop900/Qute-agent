@@ -25,7 +25,7 @@ Item {
         Rectangle {
             Layout.preferredWidth: Math.round(28 * s)
             Layout.preferredHeight: Layout.preferredWidth
-            radius: Math.round(6 * s)
+            radius: Math.round(6 * s * config.radiusScale)
             color: root.theme.input
             border.width: 1
             border.color: root.theme.border

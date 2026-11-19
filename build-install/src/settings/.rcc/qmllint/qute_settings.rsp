@@ -1,0 +1,15 @@
+--bare
+-I
+/home/mkop/Downloads/qute/qute/build-install/src/settings
+-I
+/home/mkop/Downloads/qute/qute/build-install/src/settings/Qute/Settings
+-I
+/home/mkop/Downloads/qute/qute/build-install/src/settings
+-I
+/usr/lib/qt6/qml
+--resource
+/home/mkop/Downloads/qute/qute/build-install/src/settings/.qt/rcc/qmake_Qute_Settings.qrc
+--resource
+/home/mkop/Downloads/qute/qute/build-install/src/settings/.qt/rcc/qute_settings_raw_qml_0.qrc
+/home/mkop/Downloads/qute/qute/src/settings/AnimatedSprite.qml
+/home/mkop/Downloads/qute/qute/src/settings/Main.qml

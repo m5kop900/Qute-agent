@@ -111,10 +111,13 @@ int main(int argc, char *argv[])
         return 0;                                        // nothing running, nothing to do
 
     // ---- we are the daemon from here on ----
-    QQuickStyle::setStyle(QStringLiteral("Basic"));      // fully custom look, independent of the system style
-
     AppConfig config;
     config.enableWatching();
+    // Qt Quick Controls style from the settings: "custom" (default) is the app's own Basic look,
+    // "system" keeps the platform's style (Breeze on KDE, ...), "Fusion" is Qt's portable style.
+    const QString style = config.controlStyle();
+    if (style != QLatin1String("system"))
+        QQuickStyle::setStyle(style == QLatin1String("custom") ? QStringLiteral("Basic") : style);
     Theme theme(&config);                                // overlay colors, resolved from config + system palette
     SpritePackManager packs;
     packs.load(config.packId(), config.variant());

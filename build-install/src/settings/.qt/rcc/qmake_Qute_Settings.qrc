@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/qt/qml/Qute/Settings">
+    <file alias="qmldir">/home/mkop/Downloads/qute/qute/build-install/src/settings/Qute/Settings/qmldir</file>
+  </qresource>
+</RCC>
+

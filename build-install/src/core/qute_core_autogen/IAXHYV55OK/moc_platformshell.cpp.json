@@ -1,0 +1,18 @@
+{
+    "classes": [
+        {
+            "className": "PlatformShell",
+            "lineNumber": 11,
+            "object": true,
+            "qualifiedClassName": "PlatformShell",
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QObject"
+                }
+            ]
+        }
+    ],
+    "inputFile": "platformshell.h",
+    "outputRevision": 69
+}
