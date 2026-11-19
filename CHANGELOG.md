@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### Overlay
+- Minimize: the "–" at the top right of the card folds the card into the sprite, so only the sprite stays on screen
+  and clicks pass through everywhere else. Double-click the sprite to open the card again (animated both ways).
+  A permission request or question from opencode opens a folded card automatically.
+- The context ring moved to the right of the reasoning-effort chip.
+- Minimizing now plays a collapse animation: the sprite squashes, the card twists and is pulled into the sprite while it
+  fades, and a sparkle burst follows. Opening springs the card back out of the sprite.
+- A minimized overlay is only as big as the sprite: the OS window shrinks to it (KWin), so nothing transparent is left
+  around the sprite and it can be dragged anywhere. Opening grows the window back, keeping the prompt box in place.
+- Level 2 card height is editable in qute-settings (Overlay > Long reply height, 300–1000 px, default 430).
+- Dragging the sprite starts only when the pointer moves, so a plain click or double-click is not turned into a move.
+
+### Installer
+- install.sh checks the cmake version (3.21 or newer) before configuring, and says what to do when Qt is missing.
+- New options: --qt-prefix DIR, --jobs N, --clean. The build directory is reported and the install is verified
+  (binary present, PATH checked).
+- The usage text is now written out in the script, not read from fixed line numbers.
+
 ## 0.1.0 + appearance update
 
 ### Appearance

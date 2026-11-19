@@ -48,7 +48,7 @@
                         {
                             "codegenResult": 2,
                             "column": 34,
-                            "durationMicroseconds": 97000,
+                            "durationMicroseconds": 6000,
                             "functionName": "parts",
                             "line": 34,
                             "message": "Cannot generate efficient code for script lookup"

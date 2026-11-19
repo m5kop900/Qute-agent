@@ -88,7 +88,7 @@
                         {
                             "codegenResult": 2,
                             "column": 5,
-                            "durationMicroseconds": 2000,
+                            "durationMicroseconds": 0,
                             "functionName": "tryCommit",
                             "line": 66,
                             "message": "Cannot generate efficient code for call to untyped JavaScript function"

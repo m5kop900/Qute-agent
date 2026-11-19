@@ -414,6 +414,15 @@ ApplicationWindow {
                                 }
                                 Label { text: config.scale.toFixed(2) + "x" }
 
+                                Label { text: qsTr("Long reply height") }
+                                Slider {
+                                    Layout.fillWidth: true
+                                    from: 300; to: 1000; stepSize: 10
+                                    value: config.longCardHeight
+                                    onMoved: config.longCardHeight = Math.round(value)
+                                }
+                                Label { text: config.longCardHeight + " px" }
+
                                 Label { text: qsTr("Opacity") }
                                 Slider {
                                     Layout.fillWidth: true

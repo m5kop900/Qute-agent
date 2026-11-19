@@ -3,6 +3,7 @@
 #include <QPointer>
 #include <QQuickWindow>
 #include <QTimer>
+#include <QVariant>
 
 #ifdef QUTE_HAVE_DBUS
 #include <QDBusInterface>
@@ -59,7 +60,10 @@ static const char kPlaceScript[] = R"JS(
 })();
 )JS";
 
-// Resize for a new card level: the prompt box stays where it is on screen and the card grows upward.
+// Resize for a new card level or for minimize/restore. The prompt box (the card's bottom edge) stays where it is
+// on screen: %OLDROOM% is the empty room that was below it until now, so the bottom edge is found the same way
+// for any change. The width changes too (the minimized sprite is only as wide as the sprite); the left edge
+// stays, and the window is pulled back on screen when it would leave it.
 static const char kResizeScript[] = R"JS(
 (function () {
     var wins = workspace.windowList();
@@ -68,8 +72,15 @@ static const char kResizeScript[] = R"JS(
         if (String(w.caption) !== "qute-overlay")
             continue;
         var g = w.frameGeometry;
-        var cardBottom = g.y + g.height - %DROPROOM%;
-        w.frameGeometry = { x: g.x, y: cardBottom - %CONTENTH%, width: g.width,
+        var cardBottom = g.y + g.height - %OLDROOM%;
+        var width = %WIDTH%;
+        var x = g.x;
+        var out = workspace.screenAt({ x: Math.round(g.x + g.width / 2), y: Math.round(cardBottom - 1) });
+        if (out) {
+            var area = workspace.clientArea(KWin.PlacementArea, out, workspace.currentDesktopForScreen(out));
+            x = Math.max(area.x, Math.min(g.x, area.x + area.width - width));
+        }
+        w.frameGeometry = { x: x, y: cardBottom - %CONTENTH%, width: width,
                             height: %CONTENTH% + %DROPROOM% };
     }
 })();
@@ -82,18 +93,29 @@ void KWinShell::prepareWindow(QQuickWindow *window)
     window->setColor(Qt::transparent);
 }
 
+// The QML card reports its size as shownHeight/shownDrop (the minimized sprite has no drop room); the older
+// property names are the fallback.
+static int shownInt(QQuickWindow *window, const char *primary, const char *fallback)
+{
+    QVariant v = window->property(primary);
+    if (!v.isValid())
+        v = window->property(fallback);
+    return v.toInt();
+}
+
 void KWinShell::showAtCursor(QQuickWindow *window, bool atCursor)
 {
     window->show();
     window->requestActivate();
+    m_dropRoom = shownInt(window, "shownDrop", "dropRoom");   // what the window is sized with right now
     if (!atCursor) {
         reveal(window);
         return;
     }
 #ifdef QUTE_HAVE_DBUS
     const int width = window->width();
-    const int contentH = window->property("contentHeight").toInt();
-    const int dropRoom = window->property("dropRoom").toInt();
+    const int contentH = shownInt(window, "shownHeight", "contentHeight");
+    const int dropRoom = shownInt(window, "shownDrop", "dropRoom");
     QPointer<QQuickWindow> w(window);
     // KWin must have mapped the window (with its real size) before the script can move it.
     QTimer::singleShot(80, this, [this, w, width, contentH, dropRoom] {
@@ -113,11 +135,16 @@ void KWinShell::showAtCursor(QQuickWindow *window, bool atCursor)
 void KWinShell::resizeContent(QQuickWindow *window, int contentHeight, int dropRoom)
 {
 #ifdef QUTE_HAVE_DBUS
-    Q_UNUSED(window)
+    const int oldRoom = m_dropRoom >= 0 ? m_dropRoom : dropRoom;
     QString js = QString::fromUtf8(kResizeScript);
     js.replace(QStringLiteral("%CONTENTH%"), QString::number(contentHeight));
     js.replace(QStringLiteral("%DROPROOM%"), QString::number(dropRoom));
+    js.replace(QStringLiteral("%OLDROOM%"), QString::number(oldRoom));
+    // The width the QML card wants (shownWidth); the window's current width if the property is missing.
+    QVariant w = window->property("shownWidth");
+    js.replace(QStringLiteral("%WIDTH%"), QString::number(w.isValid() ? w.toInt() : window->width()));
     runScript(QStringLiteral("qute-resize"), js);
+    m_dropRoom = dropRoom;
 #else
     PlatformShell::resizeContent(window, contentHeight, dropRoom);
 #endif

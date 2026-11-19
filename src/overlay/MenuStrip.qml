@@ -14,6 +14,7 @@ Item {
     property var sessionStore
     property var modelCatalog
     signal settingChanged()
+    signal minimizeRequested()      // the "–" at the top right: fold the card into the sprite
 
     readonly property bool popupOpen: modePopup.visible || modelPopup.visible || effortPopup.visible
     // Bottom edge of the open dropdown in this strip's coordinates; Main uses it to size the window.
@@ -210,9 +211,7 @@ Item {
                 onClicked: root.togglePicker(effortPopup, effortChip)
             }
 
-            Item { Layout.fillWidth: true }
-
-            ContextRing {
+            ContextRing {                 // right after the reasoning chip (or after the model chip when effort is hidden)
                 Layout.preferredWidth: Math.round(20 * root.s)
                 Layout.preferredHeight: Math.round(20 * root.s)
                 theme: root.theme
@@ -222,7 +221,39 @@ Item {
                 limit: root.sessionStore ? root.sessionStore.contextLimit : 0
                 cost: (root.sessionStore && root.sessionStore.usage.cost !== undefined) ? root.sessionStore.usage.cost : -1
             }
+
+            Item { Layout.fillWidth: true }
+
+            Rectangle {                   // minimize: folds the card into the sprite (double-click the sprite to open)
+                id: minimizeButton
+                Layout.preferredWidth: Math.round(22 * root.s)
+                Layout.preferredHeight: Math.round(22 * root.s)
+                radius: Math.round(6 * root.s * config.radiusScale)
+                color: minimizeArea.containsMouse ? Qt.rgba(root.theme.text.r, root.theme.text.g, root.theme.text.b, 0.08)
+                                                  : "transparent"
+                Text {
+                    anchors.centerIn: parent
+                    text: "\u2013"                // en dash, reads as a small "minus"
+                    color: minimizeArea.containsMouse ? root.theme.text : root.theme.textDim
+                    font.pixelSize: Math.round(15 * root.s)
+                }
+                MouseArea {
+                    id: minimizeArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.minimizeRequested()
+                }
+            }
         }
+    }
+
+    Hint {
+        target: minimizeButton
+        theme: root.theme
+        s: root.s
+        shown: minimizeArea.containsMouse
+        text: qsTr("Minimize to the sprite")
     }
 
     Hint {

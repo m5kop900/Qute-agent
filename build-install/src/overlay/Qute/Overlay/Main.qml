@@ -24,6 +24,20 @@ Window {
     readonly property string st: agent.stateName
     readonly property bool busy: st === "thinking" || st === "working" || st === "waiting"
 
+    // Minimized: the card folds away and only the sprite stays (double-click it to open again).
+    // openAmt runs 1 -> 0 while folding and 0 -> 1 while opening; panelFade is the summon fade.
+    property bool collapsed: false
+    property real openAmt: 1
+    property real panelFade: 1
+    property real foldSpin: 0          // the card twists a little while it folds into the sprite
+    readonly property int spriteSize: Math.round(128 * s)
+    readonly property int fullWidth: Math.round(560 * s)
+    // The window is the sprite alone while minimized (windowFolded): then the shell gets these sizes instead of the card's.
+    property int cardW: fullWidth
+    property bool windowFolded: false
+    readonly property real cardCurve: 0.04 + 0.96 * openAmt     // card scale while folding: 1 = full card
+    readonly property real cardFade: Math.max(0, Math.min(1, (openAmt - 0.12) / 0.55))
+
     // 0 = prompt only, 1 = reply visible, 2 = long reply. The card is anchored to the window BOTTOM and
     // grows UPWARD: the prompt box never moves when a reply appears. The OS window is resized to match,
     // so the window top edge is always the card's top edge - the compositor stops an interactive window
@@ -43,7 +57,8 @@ Window {
         if (baseLevel > shownLevel || (win.convCount === 0 && !busy))
             shownLevel = baseLevel
     }
-    readonly property var panelHeights: [140, 250, 430]
+    // Card heights of levels 0, 1 and 2. Level 2 is set in qute-settings ("Long reply height").
+    readonly property var panelHeights: [140, 250, config.longCardHeight]
     // Empty room kept inside the window below the card: the menu strip dropdowns open into it.
     readonly property int dropRoom: Math.round(200 * s)
     // Extra card height while files, pasted images or @mentions wait for the next prompt: the strip needs its own
@@ -58,17 +73,30 @@ Window {
     // than the window can show, so nothing is ever clipped at the top.
     // Taken from the requested geometry, not from win.height: the OS resize arrives later, so reading
     // win.height made the card and the click mask disagree for a moment (and after shrinking, for good).
-    readonly property real cardBottom: contentHeight
+    // While minimized the window is only the sprite, so the card's bottom edge (the prompt box) is the sprite's bottom.
+    readonly property real cardBottom: windowFolded ? spriteSize : contentHeight
+    // Read by the platform shell when it places the window (kept with the same meaning as contentHeight/dropRoom).
+    readonly property int shownHeight: windowFolded ? spriteSize : contentHeight
+    readonly property int shownDrop: windowFolded ? 0 : dropRoom
     readonly property int cardHeight: Math.min(Math.round(panelHeights[desiredLevel] * s) + attachExtra,
                                                Math.max(0, Math.round(cardBottom - contentTop)))
 
-    width: Math.round(560 * s) + Math.round(summonBleed)
+    width: cardW + Math.round(summonBleed)
     // The height is applied by the platform shell (see contentHeight/dropRoom); this only gives the
     // surface a sensible size before the first placement.
     // A new level (or another UI scale) needs a window tall enough for the card: ask the shell for it.
     onContentHeightChanged: {
-        controller.resizeToContent(win.contentHeight, win.dropRoom)
+        // While minimized the window is the sprite; the card's size is applied again when it opens.
+        if (!win.windowFolded)
+            win.applyGeometry()
         win.updateInputRegion()          // the click mask follows the new card height at once
+    }
+
+    // Sizes the OS window for the current state: the card, or just the sprite when minimized.
+    function applyGeometry() {
+        win.cardW = win.windowFolded ? win.spriteSize : win.fullWidth
+        controller.resizeToContent(win.shownHeight, win.shownDrop)
+        win.updateInputRegion()
     }
 
     Theme { id: appTheme }
@@ -76,6 +104,12 @@ Window {
     // Input region: only the visible card (or an open dropdown) takes mouse input; the slack below it
     // is transparent to the mouse and clicks reach whatever is underneath.
     function updateInputRegion() {
+        if (win.collapsed && win.openAmt < 0.01) {
+            // Minimized: only the sprite takes clicks, everything else passes through to the desktop.
+            controller.setInputRegion(Math.floor(sprite.x), Math.floor(sprite.y),
+                                      Math.ceil(sprite.width), Math.ceil(sprite.height))
+            return
+        }
         // Use the panel's real height, not the target level's, so the region matches what is drawn
         // during the 220 ms height animation as well.
         let top = win.cardBottom - panel.height
@@ -100,6 +134,7 @@ Window {
         controller.setInputRegion(0, top, win.width, bottom - top)
     }
     onDesiredLevelChanged: updateInputRegion()
+    onOpenAmtChanged: updateInputRegion()
     onWidthChanged: updateInputRegion()
     onHeightChanged: updateInputRegion()
     Connections {
@@ -119,7 +154,8 @@ Window {
         target: controller
         function onShown() {
             win.updateInputRegion()
-            composer.focusInput()
+            if (!win.collapsed)              // a folded card keeps the keyboard out of its hidden prompt
+                composer.focusInput()
         }
     }
 
@@ -162,7 +198,7 @@ Window {
 
         SpriteView {
             id: sprite
-            width: Math.round(128 * win.s)
+            width: win.spriteSize
             height: width
             // Sits on the prompt box's bottom edge, which stays put while the card grows upward.
             x: Math.round(win.summonBleed)
@@ -200,12 +236,42 @@ Window {
             }
         }
 
-        // Hold the mouse on the sprite and drag: the compositor moves the whole overlay.
+        // Hold the mouse on the sprite and drag: the compositor moves the whole overlay. The move starts only
+        // once the pointer really moves, so a plain click stays a click; a double-click minimized sprite opens the card.
         MouseArea {
+            id: spriteArea
             anchors.fill: sprite
             acceptedButtons: Qt.LeftButton
-            cursorShape: Qt.OpenHandCursor
-            onPressed: win.startSystemMove()
+            hoverEnabled: true
+            cursorShape: win.collapsed ? Qt.PointingHandCursor : Qt.OpenHandCursor
+            property real pressX: 0
+            property real pressY: 0
+            property bool movingWindow: false
+            onPressed: function (mouse) {
+                pressX = mouse.x
+                pressY = mouse.y
+                movingWindow = false
+            }
+            onPositionChanged: function (mouse) {
+                if (pressed && !movingWindow && Math.abs(mouse.x - pressX) + Math.abs(mouse.y - pressY) > Math.round(4 * win.s)) {
+                    movingWindow = true
+                    win.startSystemMove()
+                }
+            }
+            onReleased: movingWindow = false
+            onDoubleClicked: {
+                if (win.collapsed)
+                    win.setCollapsed(false)
+            }
+        }
+
+        Hint {
+            target: sprite
+            theme: appTheme
+            s: win.s
+            shown: spriteArea.containsMouse && win.collapsed
+            delayMs: 300
+            text: qsTr("Double-click to open")
         }
 
         Rectangle {
@@ -216,7 +282,28 @@ Window {
             height: win.cardHeight
             radius: Math.round(16 * win.s * config.radiusScale)
             color: appTheme.panel
-            transform: Translate { id: panelShift; y: 0 }
+            // Fold: the card shrinks toward the sprite (origin at its bottom-left corner) and fades out.
+            // The content fades early, the shape keeps shrinking into the sprite and fades out last.
+            opacity: win.panelFade * win.cardFade
+            visible: opacity > 0.001
+            // Folding turns the card around the sprite's centre and pulls it in (see foldSeq).
+            readonly property real spriteOriginX: sprite.x + sprite.width / 2 - panel.x
+            readonly property real spriteOriginY: panel.height - sprite.height / 2
+            transform: [
+                Translate { id: panelShift; y: 0 },
+                Rotation {
+                    angle: win.foldSpin
+                    origin.x: panel.spriteOriginX
+                    origin.y: panel.spriteOriginY
+                },
+                Scale {
+                    id: panelScale
+                    origin.x: panel.spriteOriginX
+                    origin.y: panel.spriteOriginY
+                    xScale: win.cardCurve
+                    yScale: win.cardCurve
+                }
+            ]
             border.width: 1
             border.color: appTheme.border
             Behavior on height {
@@ -239,6 +326,7 @@ Window {
                     sessionStore: store
                     modelCatalog: catalog
                     enabled: client.connected
+                    onMinimizeRequested: win.setCollapsed(true)
                 }
 
                 ConversationView {
@@ -354,11 +442,87 @@ Window {
     // true), takes about 400 ms, and never touches the prompt: typing works while it plays.
     onPlacedChanged: if (placed) summon()
 
+    // ---- minimize / open ---------------------------------------------------------------------------
+    // Folding: the sprite squashes, the card twists and is pulled into the sprite's centre while it fades, then
+    // the sprite bounces and throws a sparkle burst. Only then does the OS window shrink to the sprite, so
+    // nothing is clipped. Opening runs it backwards: the window grows first, the card springs out of the sprite.
+    function sparkBurst() {
+        for (let i = 0; i < sparkles.count; ++i)
+            sparkles.itemAt(i).play()
+    }
+
+    SequentialAnimation {
+        id: foldSeq
+        ParallelAnimation {
+            SequentialAnimation {                       // anticipation: a squash, then the sprite pulls in
+                NumberAnimation { target: sprite; property: "scale"; to: 1.12; duration: 120; easing.type: Easing.OutQuad }
+                NumberAnimation { target: sprite; property: "scale"; to: 0.9; duration: 220; easing.type: Easing.InOutQuad }
+            }
+            NumberAnimation { target: win; property: "openAmt"; to: 0; duration: 460; easing.type: Easing.InOutCubic }
+            NumberAnimation { target: win; property: "foldSpin"; to: 18; duration: 460; easing.type: Easing.InOutCubic }
+        }
+        ScriptAction { script: win.sparkBurst() }
+        NumberAnimation { target: sprite; property: "scale"; to: 1; duration: 300; easing.type: Easing.OutBack; easing.overshoot: 2.2 }
+        PauseAnimation { duration: 380 }                // let the sparkles finish inside the big window
+        ScriptAction {
+            script: {
+                win.windowFolded = true
+                win.foldSpin = 0
+                win.applyGeometry()
+            }
+        }
+    }
+
+    SequentialAnimation {
+        id: unfoldSeq
+        ScriptAction { script: win.sparkBurst() }
+        ParallelAnimation {
+            NumberAnimation { target: win; property: "openAmt"; to: 1; duration: 480; easing.type: Easing.OutBack; easing.overshoot: 1.08 }
+            NumberAnimation { target: win; property: "foldSpin"; to: 0; duration: 480; easing.type: Easing.OutCubic }
+            SequentialAnimation {
+                NumberAnimation { target: sprite; property: "scale"; to: 0.9; duration: 90; easing.type: Easing.InQuad }
+                NumberAnimation { target: sprite; property: "scale"; to: 1; duration: 280; easing.type: Easing.OutBack; easing.overshoot: 2.0 }
+            }
+        }
+        ScriptAction { script: composer.focusInput() }
+    }
+
+    function setCollapsed(on) {
+        if (on === win.collapsed)
+            return
+        win.collapsed = on
+        if (on)
+            menuStrip.closeAllPickers()
+        foldSeq.stop()
+        unfoldSeq.stop()
+        if (!config.animations) {                       // jump straight to the final state
+            win.openAmt = on ? 0 : 1
+            win.foldSpin = 0
+            win.windowFolded = on
+            win.applyGeometry()
+            if (!on)
+                composer.focusInput()
+            return
+        }
+        if (on) {
+            foldSeq.start()
+        } else {
+            // The window grows back first (its bottom edge stays put), then the card springs out of the sprite.
+            win.windowFolded = false
+            win.foldSpin = 18
+            win.applyGeometry()
+            unfoldSeq.start()
+        }
+    }
+
+    // A permission or question from opencode needs an answer in the card, so it opens a folded card.
+    onStChanged: if (win.collapsed && win.st === "waiting") win.setCollapsed(false)
+
     function summon() {
         if (!config.animations) {           // jump straight to the final state
             summonBleed = 0
             sprite.scale = 1; sprite.rotation = 0; sprite.opacity = 1
-            summonRing.opacity = 0; panel.opacity = 1; panelShift.y = 0
+            summonRing.opacity = 0; win.panelFade = 1; panelShift.y = 0
             return
         }
         summonBleed = bleedMax              // open with room around the mascot ...
@@ -376,7 +540,7 @@ Window {
                 sprite.opacity = 0
                 summonRing.scale = 0.4
                 summonRing.opacity = 0.9
-                panel.opacity = 0
+                win.panelFade = 0
                 panelShift.y = 14
             }
         }
@@ -390,7 +554,7 @@ Window {
             }
             NumberAnimation { target: summonRing; property: "scale"; to: 2.6; duration: 380; easing.type: Easing.OutCubic }
             NumberAnimation { target: summonRing; property: "opacity"; to: 0; duration: 380; easing.type: Easing.OutQuad }
-            NumberAnimation { target: panel; property: "opacity"; to: 1; duration: 220; easing.type: Easing.OutCubic }
+            NumberAnimation { target: win; property: "panelFade"; to: 1; duration: 220; easing.type: Easing.OutCubic }
             NumberAnimation { target: panelShift; property: "y"; to: 0; duration: 260; easing.type: Easing.OutBack }
             NumberAnimation { target: win; property: "summonBleed"; to: 0; duration: 420; easing.type: Easing.OutCubic }
         }

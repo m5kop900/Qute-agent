@@ -36,6 +36,7 @@ class AppConfig : public QObject {
     Q_PROPERTY(double overlayOpacity READ overlayOpacity WRITE setOverlayOpacity NOTIFY changed) // 0.3 .. 1.0 (F7.2)
     Q_PROPERTY(int cornerRadius READ cornerRadius WRITE setCornerRadius NOTIFY changed)           // F7.2
     Q_PROPERTY(QString density READ density WRITE setDensity NOTIFY changed)                     // compact | normal | spacious
+    Q_PROPERTY(int longCardHeight READ longCardHeight WRITE setLongCardHeight NOTIFY changed)     // px of the largest card level (level 2), 300..1000
     Q_PROPERTY(double spacingScale READ spacingScale NOTIFY changed)                             // read-only, from density
     Q_PROPERTY(double radiusScale READ radiusScale NOTIFY changed)                               // read-only, from cornerRadius
     Q_PROPERTY(bool animations READ animations WRITE setAnimations NOTIFY changed)               // F7.2
@@ -80,6 +81,7 @@ public:
     QString themeMode() const { return m_themeMode; }
     QString accentColor() const { return m_accentColor; }
     double scale() const { return m_scale; }
+    int longCardHeight() const { return m_longCardHeight; }
     double overlayOpacity() const { return m_overlayOpacity; }
     int cornerRadius() const { return m_cornerRadius; }
     QString density() const { return m_density; }
@@ -115,6 +117,7 @@ public:
     void setScale(double v) { assign(m_scale, qBound(0.5, v, 3.0)); }
     void setOverlayOpacity(double v) { assign(m_overlayOpacity, qBound(0.3, v, 1.0)); }
     void setCornerRadius(int v) { assign(m_cornerRadius, qBound(0, v, 40)); }
+    void setLongCardHeight(int v) { assign(m_longCardHeight, qBound(300, v, 1000)); }
     void setDensity(const QString &v)
     {
         const QString d = (v == QLatin1String("normal") || v == QLatin1String("spacious"))
@@ -168,6 +171,7 @@ private:
     QString m_themeMode = QStringLiteral("system");
     QString m_accentColor;
     double m_scale = 1.0;
+    int m_longCardHeight = 430;
     double m_overlayOpacity = 1.0;
     int m_cornerRadius = 16;
     QString m_density = QStringLiteral("compact");

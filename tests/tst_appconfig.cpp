@@ -93,6 +93,18 @@ private slots:
         QCOMPARE(c.density(), QStringLiteral("compact"));
     }
 
+    void longCardHeightIsClamped()
+    {
+        AppConfig c;
+        QCOMPARE(c.longCardHeight(), 430);          // default: the level 2 height of earlier releases
+        c.setLongCardHeight(10);
+        QCOMPARE(c.longCardHeight(), 300);
+        c.setLongCardHeight(5000);
+        QCOMPARE(c.longCardHeight(), 1000);
+        c.setLongCardHeight(520);
+        QCOMPARE(c.longCardHeight(), 520);
+    }
+
     void unknownKeysSurviveASave()
     {
         writeConfig({

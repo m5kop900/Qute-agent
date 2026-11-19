@@ -10,7 +10,7 @@
                             "column": 39,
                             "durationMicroseconds": 0,
                             "functionName": "popupOpen",
-                            "line": 18,
+                            "line": 19,
                             "message": "Cannot retrieve a non-object type by ID: modePopup"
                         },
                         {
@@ -18,7 +18,7 @@
                             "column": 38,
                             "durationMicroseconds": 0,
                             "functionName": "openPopup",
-                            "line": 20,
+                            "line": 21,
                             "message": "Cannot retrieve a non-object type by ID: modePopup"
                         },
                         {
@@ -26,7 +26,7 @@
                             "column": 42,
                             "durationMicroseconds": 0,
                             "functionName": "openPopupTop",
-                            "line": 23,
+                            "line": 24,
                             "message": "Cannot load property y from MenuStrip::openPopup with type QVariant."
                         },
                         {
@@ -34,7 +34,7 @@
                             "column": 45,
                             "durationMicroseconds": 0,
                             "functionName": "openPopupBottom",
-                            "line": 24,
+                            "line": 25,
                             "message": "Cannot load property y from MenuStrip::openPopup with type QVariant."
                         },
                         {
@@ -42,7 +42,7 @@
                             "column": 38,
                             "durationMicroseconds": 0,
                             "functionName": "hasModel",
-                            "line": 27,
+                            "line": 28,
                             "message": "Cannot load property activeModelId from MenuStrip::sessionStore with type QVariant."
                         },
                         {
@@ -50,7 +50,7 @@
                             "column": 39,
                             "durationMicroseconds": 0,
                             "functionName": "agentId",
-                            "line": 28,
+                            "line": 29,
                             "message": "Cannot load property activeAgent from MenuStrip::sessionStore with type QVariant."
                         },
                         {
@@ -58,7 +58,7 @@
                             "column": 41,
                             "durationMicroseconds": 0,
                             "functionName": "currentAgent",
-                            "line": 29,
+                            "line": 30,
                             "message": "Cannot load property agents from MenuStrip::modelCatalog with type QVariant."
                         },
                         {
@@ -66,7 +66,7 @@
                             "column": 41,
                             "durationMicroseconds": 0,
                             "functionName": "agentName",
-                            "line": 33,
+                            "line": 34,
                             "message": "Cannot load property name from MenuStrip::currentAgent with type QVariant."
                         },
                         {
@@ -74,7 +74,7 @@
                             "column": 41,
                             "durationMicroseconds": 0,
                             "functionName": "currentModel",
-                            "line": 34,
+                            "line": 35,
                             "message": "Cannot load property models from MenuStrip::modelCatalog with type QVariant."
                         },
                         {
@@ -82,7 +82,7 @@
                             "column": 41,
                             "durationMicroseconds": 0,
                             "functionName": "modelName",
-                            "line": 40,
+                            "line": 41,
                             "message": "Cannot load property name from MenuStrip::currentModel with type QVariant."
                         },
                         {
@@ -90,7 +90,7 @@
                             "column": 37,
                             "durationMicroseconds": 0,
                             "functionName": "variants",
-                            "line": 42,
+                            "line": 43,
                             "message": "Cannot load property variants from MenuStrip::currentModel with type QVariant."
                         },
                         {
@@ -98,7 +98,7 @@
                             "column": 43,
                             "durationMicroseconds": 0,
                             "functionName": "effortVisible",
-                            "line": 43,
+                            "line": 44,
                             "message": "Cannot load property length from MenuStrip::variants with type QVariant."
                         },
                         {
@@ -106,7 +106,7 @@
                             "column": 42,
                             "durationMicroseconds": 0,
                             "functionName": "effortName",
-                            "line": 44,
+                            "line": 45,
                             "message": "Cannot load property activeVariant from MenuStrip::sessionStore with type QVariant."
                         },
                         {
@@ -114,7 +114,7 @@
                             "column": 42,
                             "durationMicroseconds": 0,
                             "functionName": "primaryAgents",
-                            "line": 53,
+                            "line": 54,
                             "message": "Cannot load property primaryAgents from MenuStrip::modelCatalog with type QVariant."
                         },
                         {
@@ -122,7 +122,7 @@
                             "column": 35,
                             "durationMicroseconds": 0,
                             "functionName": "models",
-                            "line": 54,
+                            "line": 55,
                             "message": "Cannot load property models from MenuStrip::modelCatalog with type QVariant."
                         },
                         {
@@ -130,7 +130,7 @@
                             "column": 39,
                             "durationMicroseconds": 0,
                             "functionName": "agentItems",
-                            "line": 56,
+                            "line": 57,
                             "message": "Cannot load property length from MenuStrip::primaryAgents with type QVariant."
                         },
                         {
@@ -138,7 +138,7 @@
                             "column": 39,
                             "durationMicroseconds": 0,
                             "functionName": "modelItems",
-                            "line": 65,
+                            "line": 66,
                             "message": "Cannot load property length from MenuStrip::models with type QVariant."
                         },
                         {
@@ -146,7 +146,7 @@
                             "column": 40,
                             "durationMicroseconds": 0,
                             "functionName": "effortItems",
-                            "line": 81,
+                            "line": 82,
                             "message": "Cannot load property length from MenuStrip::variants with type QVariant."
                         },
                         {
@@ -154,7 +154,7 @@
                             "column": 21,
                             "durationMicroseconds": 0,
                             "functionName": "implicitHeight",
-                            "line": 88,
+                            "line": 89,
                             "message": ""
                         },
                         {
@@ -162,7 +162,7 @@
                             "column": 5,
                             "durationMicroseconds": 0,
                             "functionName": "titleCase",
-                            "line": 90,
+                            "line": 91,
                             "message": "Functions without type annotations won't be compiled"
                         },
                         {
@@ -170,7 +170,7 @@
                             "column": 5,
                             "durationMicroseconds": 0,
                             "functionName": "pickModel",
-                            "line": 94,
+                            "line": 95,
                             "message": "Functions without type annotations won't be compiled"
                         },
                         {
@@ -178,7 +178,7 @@
                             "column": 5,
                             "durationMicroseconds": 0,
                             "functionName": "pickVariant",
-                            "line": 113,
+                            "line": 114,
                             "message": "Functions without type annotations won't be compiled"
                         },
                         {
@@ -186,7 +186,7 @@
                             "column": 5,
                             "durationMicroseconds": 0,
                             "functionName": "pickAgent",
-                            "line": 119,
+                            "line": 120,
                             "message": "Functions without type annotations won't be compiled"
                         },
                         {
@@ -194,7 +194,7 @@
                             "column": 5,
                             "durationMicroseconds": 0,
                             "functionName": "closeAllPickers",
-                            "line": 125,
+                            "line": 126,
                             "message": "Cannot retrieve a non-object type by ID: modePopup"
                         },
                         {
@@ -202,7 +202,7 @@
                             "column": 5,
                             "durationMicroseconds": 0,
                             "functionName": "togglePicker",
-                            "line": 132,
+                            "line": 133,
                             "message": "Functions without type annotations won't be compiled"
                         },
                         {
@@ -210,7 +210,7 @@
                             "column": 5,
                             "durationMicroseconds": 0,
                             "functionName": "openPicker",
-                            "line": 141,
+                            "line": 142,
                             "message": "Functions without type annotations won't be compiled"
                         },
                         {
@@ -218,7 +218,7 @@
                             "column": 17,
                             "durationMicroseconds": 0,
                             "functionName": "radius",
-                            "line": 169,
+                            "line": 170,
                             "message": "Cannot access value for name s"
                         },
                         {
@@ -226,7 +226,7 @@
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "color",
-                            "line": 170,
+                            "line": 171,
                             "message": "Cannot load property input from MenuStrip::theme with type QVariant."
                         },
                         {
@@ -234,7 +234,7 @@
                             "column": 23,
                             "durationMicroseconds": 0,
                             "functionName": "fill",
-                            "line": 168,
+                            "line": 169,
                             "message": ""
                         },
                         {
@@ -242,7 +242,7 @@
                             "column": 23,
                             "durationMicroseconds": 0,
                             "functionName": "color",
-                            "line": 172,
+                            "line": 173,
                             "message": "Cannot load property border from MenuStrip::theme with type QVariant."
                         },
                         {
@@ -250,7 +250,7 @@
                             "column": 22,
                             "durationMicroseconds": 0,
                             "functionName": "spacing",
-                            "line": 178,
+                            "line": 179,
                             "message": "Cannot access value for name s"
                         },
                         {
@@ -258,7 +258,7 @@
                             "column": 27,
                             "durationMicroseconds": 0,
                             "functionName": "fill",
-                            "line": 176,
+                            "line": 177,
                             "message": ""
                         },
                         {
@@ -266,7 +266,7 @@
                             "column": 30,
                             "durationMicroseconds": 0,
                             "functionName": "margins",
-                            "line": 177,
+                            "line": 178,
                             "message": "Cannot access value for name s"
                         },
                         {
@@ -274,7 +274,7 @@
                             "column": 24,
                             "durationMicroseconds": 0,
                             "functionName": "theme",
-                            "line": 182,
+                            "line": 183,
                             "message": ""
                         },
                         {
@@ -282,7 +282,7 @@
                             "column": 20,
                             "durationMicroseconds": 0,
                             "functionName": "s",
-                            "line": 183,
+                            "line": 184,
                             "message": ""
                         },
                         {
@@ -290,7 +290,7 @@
                             "column": 23,
                             "durationMicroseconds": 0,
                             "functionName": "text",
-                            "line": 184,
+                            "line": 185,
                             "message": ""
                         },
                         {
@@ -298,7 +298,7 @@
                             "column": 31,
                             "durationMicroseconds": 0,
                             "functionName": "maxTextWidth",
-                            "line": 187,
+                            "line": 188,
                             "message": ""
                         },
                         {
@@ -306,7 +306,7 @@
                             "column": 30,
                             "durationMicroseconds": 0,
                             "functionName": "interactive",
-                            "line": 188,
+                            "line": 189,
                             "message": "Cannot load property length from MenuStrip::agentItems with type QVariant."
                         },
                         {
@@ -314,7 +314,7 @@
                             "column": 28,
                             "durationMicroseconds": 0,
                             "functionName": "onClicked",
-                            "line": 189,
+                            "line": 190,
                             "message": "Cannot retrieve a non-object type by ID: modePopup"
                         },
                         {
@@ -322,7 +322,7 @@
                             "column": 24,
                             "durationMicroseconds": 0,
                             "functionName": "theme",
-                            "line": 194,
+                            "line": 195,
                             "message": ""
                         },
                         {
@@ -330,7 +330,7 @@
                             "column": 20,
                             "durationMicroseconds": 0,
                             "functionName": "s",
-                            "line": 195,
+                            "line": 196,
                             "message": ""
                         },
                         {
@@ -338,7 +338,7 @@
                             "column": 23,
                             "durationMicroseconds": 0,
                             "functionName": "text",
-                            "line": 196,
+                            "line": 197,
                             "message": ""
                         },
                         {
@@ -346,7 +346,7 @@
                             "column": 31,
                             "durationMicroseconds": 0,
                             "functionName": "maxTextWidth",
-                            "line": 197,
+                            "line": 198,
                             "message": ""
                         },
                         {
@@ -354,7 +354,7 @@
                             "column": 30,
                             "durationMicroseconds": 0,
                             "functionName": "interactive",
-                            "line": 198,
+                            "line": 199,
                             "message": "Cannot load property length from MenuStrip::modelItems with type QVariant."
                         },
                         {
@@ -362,7 +362,7 @@
                             "column": 28,
                             "durationMicroseconds": 0,
                             "functionName": "onClicked",
-                            "line": 199,
+                            "line": 200,
                             "message": "Cannot retrieve a non-object type by ID: modelPopup"
                         },
                         {
@@ -370,7 +370,7 @@
                             "column": 24,
                             "durationMicroseconds": 0,
                             "functionName": "theme",
-                            "line": 204,
+                            "line": 205,
                             "message": ""
                         },
                         {
@@ -378,7 +378,7 @@
                             "column": 20,
                             "durationMicroseconds": 0,
                             "functionName": "s",
-                            "line": 205,
+                            "line": 206,
                             "message": ""
                         },
                         {
@@ -386,7 +386,7 @@
                             "column": 26,
                             "durationMicroseconds": 0,
                             "functionName": "visible",
-                            "line": 206,
+                            "line": 207,
                             "message": ""
                         },
                         {
@@ -394,7 +394,7 @@
                             "column": 23,
                             "durationMicroseconds": 0,
                             "functionName": "text",
-                            "line": 207,
+                            "line": 208,
                             "message": ""
                         },
                         {
@@ -402,7 +402,7 @@
                             "column": 31,
                             "durationMicroseconds": 0,
                             "functionName": "maxTextWidth",
-                            "line": 208,
+                            "line": 209,
                             "message": ""
                         },
                         {
@@ -410,7 +410,7 @@
                             "column": 30,
                             "durationMicroseconds": 0,
                             "functionName": "interactive",
-                            "line": 209,
+                            "line": 210,
                             "message": "Cannot load property length from MenuStrip::effortItems with type QVariant."
                         },
                         {
@@ -418,7 +418,7 @@
                             "column": 28,
                             "durationMicroseconds": 0,
                             "functionName": "onClicked",
-                            "line": 210,
+                            "line": 211,
                             "message": "Cannot retrieve a non-object type by ID: effortPopup"
                         },
                         {
@@ -426,7 +426,7 @@
                             "column": 24,
                             "durationMicroseconds": 0,
                             "functionName": "theme",
-                            "line": 218,
+                            "line": 217,
                             "message": ""
                         },
                         {
@@ -434,7 +434,7 @@
                             "column": 20,
                             "durationMicroseconds": 0,
                             "functionName": "s",
-                            "line": 219,
+                            "line": 218,
                             "message": ""
                         },
                         {
@@ -442,7 +442,7 @@
                             "column": 26,
                             "durationMicroseconds": 0,
                             "functionName": "percent",
-                            "line": 220,
+                            "line": 219,
                             "message": "Cannot load property contextPercent from MenuStrip::sessionStore with type QVariant."
                         },
                         {
@@ -450,7 +450,7 @@
                             "column": 25,
                             "durationMicroseconds": 0,
                             "functionName": "tokens",
-                            "line": 221,
+                            "line": 220,
                             "message": "Cannot load property contextTokens from MenuStrip::sessionStore with type QVariant."
                         },
                         {
@@ -458,7 +458,7 @@
                             "column": 24,
                             "durationMicroseconds": 0,
                             "functionName": "limit",
-                            "line": 222,
+                            "line": 221,
                             "message": "Cannot load property contextLimit from MenuStrip::sessionStore with type QVariant."
                         },
                         {
@@ -466,7 +466,7 @@
                             "column": 23,
                             "durationMicroseconds": 0,
                             "functionName": "cost",
-                            "line": 223,
+                            "line": 222,
                             "message": "Cannot load property usage from MenuStrip::sessionStore with type QVariant."
                         },
                         {
@@ -474,7 +474,7 @@
                             "column": 40,
                             "durationMicroseconds": 0,
                             "functionName": "preferredWidth",
-                            "line": 216,
+                            "line": 215,
                             "message": ""
                         },
                         {
@@ -482,7 +482,87 @@
                             "column": 41,
                             "durationMicroseconds": 0,
                             "functionName": "preferredHeight",
-                            "line": 217,
+                            "line": 216,
+                            "message": ""
+                        },
+                        {
+                            "codegenResult": 2,
+                            "column": 25,
+                            "durationMicroseconds": 0,
+                            "functionName": "radius",
+                            "line": 231,
+                            "message": "Cannot access value for name config"
+                        },
+                        {
+                            "codegenResult": 2,
+                            "column": 24,
+                            "durationMicroseconds": 0,
+                            "functionName": "color",
+                            "line": 232,
+                            "message": "Cannot load property text from MenuStrip::theme with type QVariant."
+                        },
+                        {
+                            "codegenResult": 0,
+                            "column": 40,
+                            "durationMicroseconds": 0,
+                            "functionName": "preferredWidth",
+                            "line": 229,
+                            "message": ""
+                        },
+                        {
+                            "codegenResult": 0,
+                            "column": 41,
+                            "durationMicroseconds": 0,
+                            "functionName": "preferredHeight",
+                            "line": 230,
+                            "message": ""
+                        },
+                        {
+                            "codegenResult": 2,
+                            "column": 28,
+                            "durationMicroseconds": 0,
+                            "functionName": "color",
+                            "line": 237,
+                            "message": "Cannot load property text from MenuStrip::theme with type QVariant."
+                        },
+                        {
+                            "codegenResult": 0,
+                            "column": 39,
+                            "durationMicroseconds": 0,
+                            "functionName": "centerIn",
+                            "line": 235,
+                            "message": ""
+                        },
+                        {
+                            "codegenResult": 0,
+                            "column": 37,
+                            "durationMicroseconds": 0,
+                            "functionName": "pixelSize",
+                            "line": 238,
+                            "message": ""
+                        },
+                        {
+                            "codegenResult": 0,
+                            "column": 34,
+                            "durationMicroseconds": 0,
+                            "functionName": "cursorShape",
+                            "line": 244,
+                            "message": ""
+                        },
+                        {
+                            "codegenResult": 0,
+                            "column": 32,
+                            "durationMicroseconds": 0,
+                            "functionName": "onClicked",
+                            "line": 245,
+                            "message": ""
+                        },
+                        {
+                            "codegenResult": 0,
+                            "column": 35,
+                            "durationMicroseconds": 0,
+                            "functionName": "fill",
+                            "line": 242,
                             "message": ""
                         },
                         {
@@ -490,7 +570,7 @@
                             "column": 17,
                             "durationMicroseconds": 0,
                             "functionName": "target",
-                            "line": 229,
+                            "line": 252,
                             "message": ""
                         },
                         {
@@ -498,7 +578,7 @@
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "theme",
-                            "line": 230,
+                            "line": 253,
                             "message": ""
                         },
                         {
@@ -506,7 +586,39 @@
                             "column": 12,
                             "durationMicroseconds": 0,
                             "functionName": "s",
-                            "line": 231,
+                            "line": 254,
+                            "message": ""
+                        },
+                        {
+                            "codegenResult": 0,
+                            "column": 16,
+                            "durationMicroseconds": 0,
+                            "functionName": "shown",
+                            "line": 255,
+                            "message": ""
+                        },
+                        {
+                            "codegenResult": 0,
+                            "column": 17,
+                            "durationMicroseconds": 0,
+                            "functionName": "target",
+                            "line": 260,
+                            "message": ""
+                        },
+                        {
+                            "codegenResult": 0,
+                            "column": 16,
+                            "durationMicroseconds": 0,
+                            "functionName": "theme",
+                            "line": 261,
+                            "message": ""
+                        },
+                        {
+                            "codegenResult": 0,
+                            "column": 12,
+                            "durationMicroseconds": 0,
+                            "functionName": "s",
+                            "line": 262,
                             "message": ""
                         },
                         {
@@ -514,7 +626,7 @@
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "shown",
-                            "line": 232,
+                            "line": 263,
                             "message": "Cannot retrieve a non-object type by ID: modePopup"
                         },
                         {
@@ -522,7 +634,7 @@
                             "column": 15,
                             "durationMicroseconds": 0,
                             "functionName": "text",
-                            "line": 233,
+                            "line": 264,
                             "message": "Could not find property \"text\"."
                         },
                         {
@@ -530,7 +642,7 @@
                             "column": 17,
                             "durationMicroseconds": 0,
                             "functionName": "target",
-                            "line": 236,
+                            "line": 267,
                             "message": ""
                         },
                         {
@@ -538,7 +650,7 @@
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "theme",
-                            "line": 237,
+                            "line": 268,
                             "message": ""
                         },
                         {
@@ -546,7 +658,7 @@
                             "column": 12,
                             "durationMicroseconds": 0,
                             "functionName": "s",
-                            "line": 238,
+                            "line": 269,
                             "message": ""
                         },
                         {
@@ -554,7 +666,7 @@
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "shown",
-                            "line": 239,
+                            "line": 270,
                             "message": "Cannot retrieve a non-object type by ID: modelPopup"
                         },
                         {
@@ -562,7 +674,7 @@
                             "column": 15,
                             "durationMicroseconds": 0,
                             "functionName": "text",
-                            "line": 240,
+                            "line": 271,
                             "message": "Could not find property \"text\"."
                         },
                         {
@@ -570,7 +682,7 @@
                             "column": 17,
                             "durationMicroseconds": 0,
                             "functionName": "target",
-                            "line": 243,
+                            "line": 274,
                             "message": ""
                         },
                         {
@@ -578,7 +690,7 @@
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "theme",
-                            "line": 244,
+                            "line": 275,
                             "message": ""
                         },
                         {
@@ -586,7 +698,7 @@
                             "column": 12,
                             "durationMicroseconds": 0,
                             "functionName": "s",
-                            "line": 245,
+                            "line": 276,
                             "message": ""
                         },
                         {
@@ -594,7 +706,7 @@
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "shown",
-                            "line": 246,
+                            "line": 277,
                             "message": "Cannot retrieve a non-object type by ID: effortPopup"
                         },
                         {
@@ -602,7 +714,7 @@
                             "column": 15,
                             "durationMicroseconds": 0,
                             "functionName": "text",
-                            "line": 247,
+                            "line": 278,
                             "message": "Could not find property \"text\"."
                         },
                         {
@@ -610,7 +722,7 @@
                             "column": 17,
                             "durationMicroseconds": 0,
                             "functionName": "parent",
-                            "line": 253,
+                            "line": 284,
                             "message": "Could not find property \"parent\"."
                         },
                         {
@@ -618,7 +730,7 @@
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "theme",
-                            "line": 254,
+                            "line": 285,
                             "message": ""
                         },
                         {
@@ -626,7 +738,7 @@
                             "column": 12,
                             "durationMicroseconds": 0,
                             "functionName": "s",
-                            "line": 255,
+                            "line": 286,
                             "message": ""
                         },
                         {
@@ -634,7 +746,7 @@
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "items",
-                            "line": 257,
+                            "line": 288,
                             "message": ""
                         },
                         {
@@ -642,7 +754,7 @@
                             "column": 21,
                             "durationMicroseconds": 0,
                             "functionName": "currentKey",
-                            "line": 258,
+                            "line": 289,
                             "message": ""
                         },
                         {
@@ -650,7 +762,7 @@
                             "column": 19,
                             "durationMicroseconds": 0,
                             "functionName": "onPicked",
-                            "line": 261,
+                            "line": 292,
                             "message": "Cannot generate efficient code for call to untyped JavaScript function"
                         },
                         {
@@ -658,7 +770,7 @@
                             "column": 19,
                             "durationMicroseconds": 0,
                             "functionName": "onPicked",
-                            "line": 261,
+                            "line": 292,
                             "message": ""
                         },
                         {
@@ -666,7 +778,7 @@
                             "column": 17,
                             "durationMicroseconds": 0,
                             "functionName": "parent",
-                            "line": 266,
+                            "line": 297,
                             "message": "Could not find property \"parent\"."
                         },
                         {
@@ -674,7 +786,7 @@
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "theme",
-                            "line": 267,
+                            "line": 298,
                             "message": ""
                         },
                         {
@@ -682,7 +794,7 @@
                             "column": 12,
                             "durationMicroseconds": 0,
                             "functionName": "s",
-                            "line": 268,
+                            "line": 299,
                             "message": ""
                         },
                         {
@@ -690,7 +802,7 @@
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "items",
-                            "line": 270,
+                            "line": 301,
                             "message": ""
                         },
                         {
@@ -698,7 +810,7 @@
                             "column": 21,
                             "durationMicroseconds": 0,
                             "functionName": "currentKey",
-                            "line": 272,
+                            "line": 303,
                             "message": "Cannot load property activeModelProvider from MenuStrip::sessionStore with type QVariant."
                         },
                         {
@@ -706,7 +818,7 @@
                             "column": 19,
                             "durationMicroseconds": 0,
                             "functionName": "onPicked",
-                            "line": 274,
+                            "line": 305,
                             "message": "Cannot generate efficient code for call to untyped JavaScript function"
                         },
                         {
@@ -714,7 +826,7 @@
                             "column": 19,
                             "durationMicroseconds": 0,
                             "functionName": "onPicked",
-                            "line": 274,
+                            "line": 305,
                             "message": ""
                         },
                         {
@@ -722,7 +834,7 @@
                             "column": 17,
                             "durationMicroseconds": 0,
                             "functionName": "parent",
-                            "line": 279,
+                            "line": 310,
                             "message": "Could not find property \"parent\"."
                         },
                         {
@@ -730,7 +842,7 @@
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "theme",
-                            "line": 280,
+                            "line": 311,
                             "message": ""
                         },
                         {
@@ -738,7 +850,7 @@
                             "column": 12,
                             "durationMicroseconds": 0,
                             "functionName": "s",
-                            "line": 281,
+                            "line": 312,
                             "message": ""
                         },
                         {
@@ -746,7 +858,7 @@
                             "column": 16,
                             "durationMicroseconds": 0,
                             "functionName": "items",
-                            "line": 283,
+                            "line": 314,
                             "message": ""
                         },
                         {
@@ -754,7 +866,7 @@
                             "column": 21,
                             "durationMicroseconds": 0,
                             "functionName": "currentKey",
-                            "line": 284,
+                            "line": 315,
                             "message": "Cannot load property activeVariant from MenuStrip::sessionStore with type QVariant."
                         },
                         {
@@ -762,7 +874,7 @@
                             "column": 19,
                             "durationMicroseconds": 0,
                             "functionName": "onPicked",
-                            "line": 286,
+                            "line": 317,
                             "message": "Cannot generate efficient code for call to untyped JavaScript function"
                         },
                         {
@@ -770,7 +882,7 @@
                             "column": 19,
                             "durationMicroseconds": 0,
                             "functionName": "onPicked",
-                            "line": 286,
+                            "line": 317,
                             "message": ""
                         }
                     ],

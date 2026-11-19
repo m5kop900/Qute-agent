@@ -18,4 +18,6 @@ private:
     void runPlacementScript(QQuickWindow *window, int width, int contentHeight, int dropRoom);
     // Writes `js` to a temp file, loads + runs it as KWin script `name`, then unloads it.
     void runScript(const QString &name, QString js);
+    // Empty room below the card that the window is currently sized with (-1 until the first placement).
+    int m_dropRoom = -1;
 };

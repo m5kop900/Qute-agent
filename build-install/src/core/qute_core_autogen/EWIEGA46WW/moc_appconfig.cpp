@@ -63,6 +63,7 @@ template <> constexpr inline auto AppConfig::qt_create_metaobjectdata<qt_meta_ta
         "overlayOpacity",
         "cornerRadius",
         "density",
+        "longCardHeight",
         "spacingScale",
         "radiusScale",
         "animations",
@@ -125,28 +126,30 @@ template <> constexpr inline auto AppConfig::qt_create_metaobjectdata<qt_meta_ta
         QtMocHelpers::PropertyData<int>(23, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'density'
         QtMocHelpers::PropertyData<QString>(24, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'longCardHeight'
+        QtMocHelpers::PropertyData<int>(25, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'spacingScale'
-        QtMocHelpers::PropertyData<double>(25, QMetaType::Double, QMC::DefaultPropertyFlags, 0),
-        // property 'radiusScale'
         QtMocHelpers::PropertyData<double>(26, QMetaType::Double, QMC::DefaultPropertyFlags, 0),
+        // property 'radiusScale'
+        QtMocHelpers::PropertyData<double>(27, QMetaType::Double, QMC::DefaultPropertyFlags, 0),
         // property 'animations'
-        QtMocHelpers::PropertyData<bool>(27, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        QtMocHelpers::PropertyData<bool>(28, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'fontFamily'
-        QtMocHelpers::PropertyData<QString>(28, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'codeFontFamily'
         QtMocHelpers::PropertyData<QString>(29, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'controlStyle'
+        // property 'codeFontFamily'
         QtMocHelpers::PropertyData<QString>(30, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'controlStyle'
+        QtMocHelpers::PropertyData<QString>(31, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'placeAtCursor'
-        QtMocHelpers::PropertyData<bool>(31, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'hideOnFocusLoss'
         QtMocHelpers::PropertyData<bool>(32, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'hideOnFocusLoss'
+        QtMocHelpers::PropertyData<bool>(33, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'maxAttachmentSizeMB'
-        QtMocHelpers::PropertyData<int>(33, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        QtMocHelpers::PropertyData<int>(34, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'autoCompactEnabled'
-        QtMocHelpers::PropertyData<bool>(34, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        QtMocHelpers::PropertyData<bool>(35, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'autoCompactThreshold'
-        QtMocHelpers::PropertyData<int>(35, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        QtMocHelpers::PropertyData<int>(36, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
     };
     QtMocHelpers::UintData qt_enums {
     };
@@ -202,17 +205,18 @@ void AppConfig::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, v
         case 17: *reinterpret_cast<double*>(_v) = _t->overlayOpacity(); break;
         case 18: *reinterpret_cast<int*>(_v) = _t->cornerRadius(); break;
         case 19: *reinterpret_cast<QString*>(_v) = _t->density(); break;
-        case 20: *reinterpret_cast<double*>(_v) = _t->spacingScale(); break;
-        case 21: *reinterpret_cast<double*>(_v) = _t->radiusScale(); break;
-        case 22: *reinterpret_cast<bool*>(_v) = _t->animations(); break;
-        case 23: *reinterpret_cast<QString*>(_v) = _t->fontFamily(); break;
-        case 24: *reinterpret_cast<QString*>(_v) = _t->codeFontFamily(); break;
-        case 25: *reinterpret_cast<QString*>(_v) = _t->controlStyle(); break;
-        case 26: *reinterpret_cast<bool*>(_v) = _t->placeAtCursor(); break;
-        case 27: *reinterpret_cast<bool*>(_v) = _t->hideOnFocusLoss(); break;
-        case 28: *reinterpret_cast<int*>(_v) = _t->maxAttachmentSizeMB(); break;
-        case 29: *reinterpret_cast<bool*>(_v) = _t->autoCompactEnabled(); break;
-        case 30: *reinterpret_cast<int*>(_v) = _t->autoCompactThreshold(); break;
+        case 20: *reinterpret_cast<int*>(_v) = _t->longCardHeight(); break;
+        case 21: *reinterpret_cast<double*>(_v) = _t->spacingScale(); break;
+        case 22: *reinterpret_cast<double*>(_v) = _t->radiusScale(); break;
+        case 23: *reinterpret_cast<bool*>(_v) = _t->animations(); break;
+        case 24: *reinterpret_cast<QString*>(_v) = _t->fontFamily(); break;
+        case 25: *reinterpret_cast<QString*>(_v) = _t->codeFontFamily(); break;
+        case 26: *reinterpret_cast<QString*>(_v) = _t->controlStyle(); break;
+        case 27: *reinterpret_cast<bool*>(_v) = _t->placeAtCursor(); break;
+        case 28: *reinterpret_cast<bool*>(_v) = _t->hideOnFocusLoss(); break;
+        case 29: *reinterpret_cast<int*>(_v) = _t->maxAttachmentSizeMB(); break;
+        case 30: *reinterpret_cast<bool*>(_v) = _t->autoCompactEnabled(); break;
+        case 31: *reinterpret_cast<int*>(_v) = _t->autoCompactThreshold(); break;
         default: break;
         }
     }
@@ -237,15 +241,16 @@ void AppConfig::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, v
         case 17: _t->setOverlayOpacity(*reinterpret_cast<double*>(_v)); break;
         case 18: _t->setCornerRadius(*reinterpret_cast<int*>(_v)); break;
         case 19: _t->setDensity(*reinterpret_cast<QString*>(_v)); break;
-        case 22: _t->setAnimations(*reinterpret_cast<bool*>(_v)); break;
-        case 23: _t->setFontFamily(*reinterpret_cast<QString*>(_v)); break;
-        case 24: _t->setCodeFontFamily(*reinterpret_cast<QString*>(_v)); break;
-        case 25: _t->setControlStyle(*reinterpret_cast<QString*>(_v)); break;
-        case 26: _t->setPlaceAtCursor(*reinterpret_cast<bool*>(_v)); break;
-        case 27: _t->setHideOnFocusLoss(*reinterpret_cast<bool*>(_v)); break;
-        case 28: _t->setMaxAttachmentSizeMB(*reinterpret_cast<int*>(_v)); break;
-        case 29: _t->setAutoCompactEnabled(*reinterpret_cast<bool*>(_v)); break;
-        case 30: _t->setAutoCompactThreshold(*reinterpret_cast<int*>(_v)); break;
+        case 20: _t->setLongCardHeight(*reinterpret_cast<int*>(_v)); break;
+        case 23: _t->setAnimations(*reinterpret_cast<bool*>(_v)); break;
+        case 24: _t->setFontFamily(*reinterpret_cast<QString*>(_v)); break;
+        case 25: _t->setCodeFontFamily(*reinterpret_cast<QString*>(_v)); break;
+        case 26: _t->setControlStyle(*reinterpret_cast<QString*>(_v)); break;
+        case 27: _t->setPlaceAtCursor(*reinterpret_cast<bool*>(_v)); break;
+        case 28: _t->setHideOnFocusLoss(*reinterpret_cast<bool*>(_v)); break;
+        case 29: _t->setMaxAttachmentSizeMB(*reinterpret_cast<int*>(_v)); break;
+        case 30: _t->setAutoCompactEnabled(*reinterpret_cast<bool*>(_v)); break;
+        case 31: _t->setAutoCompactThreshold(*reinterpret_cast<int*>(_v)); break;
         default: break;
         }
     }
@@ -283,7 +288,7 @@ int AppConfig::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
             || _c == QMetaObject::ResetProperty || _c == QMetaObject::BindableProperty
             || _c == QMetaObject::RegisterPropertyMetaType) {
         qt_static_metacall(this, _c, _id, _a);
-        _id -= 31;
+        _id -= 32;
     }
     return _id;
 }
