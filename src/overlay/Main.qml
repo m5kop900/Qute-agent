@@ -582,7 +582,7 @@ Window {
                               client.sessionId)
             client.listSessions()
         } else if (name === "compact") {
-            client.compactSession()
+            store.requestCompaction()     // through the store: the automatic rules must know about it
         } else if (name === "openinopencode") {
             const err = controller.openInOpencode(client.sessionId, store.sessionDirectory)
             if (err !== "")

@@ -106,6 +106,11 @@ private:
     static QJsonArray toJsonFiles(const QVariantList &files);
     static QJsonArray toJsonAgents(const QVariantList &agents);
     void checkHealth();
+    void heartbeat();                 // periodic check of an open connection (see start())
+    bool m_heartbeatInFlight = false;
+    bool m_lostConnection = false;    // the connection dropped and has not come back yet
+    QTimer m_heartbeat;
+    qint64 m_lastEventMs = 0;         // when the last event arrived on the stream (stall detection)
     void probeV2Info();
     void apiDecided(const QString &version);
     void notRunning();

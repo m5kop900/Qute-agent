@@ -1,5 +1,7 @@
 #include "opencodeclient.h"
 
+#include <QDateTime>
+
 #include "appconfig.h"
 #include "opencodelocator.h"
 
@@ -20,6 +22,10 @@ OpenCodeClient::OpenCodeClient(AppConfig *config, QObject *parent)
     connect(&m_retry, &QTimer::timeout, this, &OpenCodeClient::checkHealth);
     m_poll.setInterval(1500);
     connect(&m_poll, &QTimer::timeout, this, &OpenCodeClient::pollStatus);
+    // Connection watch: while connected, one cheap request every 5 s. A failure drops the connection (with a notice)
+    // and the retry timer takes over until the server answers again.
+    m_heartbeat.setInterval(5000);
+    connect(&m_heartbeat, &QTimer::timeout, this, &OpenCodeClient::heartbeat);
 }
 
 OpenCodeClient::~OpenCodeClient()
@@ -72,6 +78,32 @@ void OpenCodeClient::start()
     while (m_base.endsWith(QLatin1Char('/')))
         m_base.chop(1);
     checkHealth();
+    m_heartbeat.start();
+}
+
+void OpenCodeClient::heartbeat()
+{
+    if (!m_connected || m_heartbeatInFlight)
+        return;
+    m_heartbeatInFlight = true;
+    // V1 answers /global/health; a V2-only server answers /api/info (the same probe checkHealth uses).
+    const QString path = isV2() ? QStringLiteral("/api/info") : QStringLiteral("/global/health");
+    QNetworkRequest req = makeRequest(path, false);
+    req.setTransferTimeout(4000);     // on the request (Qt 6): a dead server must not leave the check hanging
+    QNetworkReply *r = m_nam->get(req);
+    connect(r, &QNetworkReply::finished, this, [this, r] {
+        r->deleteLater();
+        m_heartbeatInFlight = false;
+        if (r->error() != QNetworkReply::NoError) {
+            setConnected(false);          // emits the "connection lost" notice
+            m_retry.start(1000);          // checkHealth() decides: back, not running, or a password problem
+            return;
+        }
+        // The server answers, but its event stream may have stalled (no event for 30 s): a silent stream leaves a
+        // running turn or a compaction waiting forever. Subscribe again.
+        if (m_events && QDateTime::currentMSecsSinceEpoch() - m_lastEventMs > 30000)
+            openEventStream();
+    });
 }
 
 // ---- API generation detection -------------------------------------------------------------------------
@@ -352,8 +384,10 @@ void OpenCodeClient::switchSession(const QString &id)
     m_sessionId = id;
     m_config->setLastSessionId(id);
     m_config->save();
-    emit sessionChanged();
+    // The store hears about the switch first (it clears the view and the model chip), then the session change
+    // starts the model handling for the new session.
     emit serverEvent(QStringLiteral("session.switched"), QJsonObject{{"sessionID", id}});
+    emit sessionChanged();
     openEventStream();
 }
 
@@ -477,6 +511,7 @@ void OpenCodeClient::onEventData()
 {
     if (!m_events)
         return;
+    m_lastEventMs = QDateTime::currentMSecsSinceEpoch();
     for (const SseEvent &ev : m_parser.feed(m_events->readAll())) {
         QJsonObject o = QJsonDocument::fromJson(ev.data).object();
         if (o.contains(QStringLiteral("payload")))                  // /global/event wraps: {directory, payload}
@@ -872,8 +907,11 @@ void OpenCodeClient::abort()
 {
     if (m_sessionId.isEmpty())
         return;
-    postJson(isV2() ? QStringLiteral("/api/session/%1/interrupt").arg(m_sessionId)
-                    : QStringLiteral("/session/%1/abort").arg(m_sessionId), {}, tr("Abort"));
+    // Only a confirmed stop ends the turn here. Then the synthetic idle clears "retrying" and the status bar, and
+    // the turn's own bookkeeping (polling, reconcile) runs as for a finished turn.
+    postCommand(isV2() ? QStringLiteral("/api/session/%1/interrupt").arg(m_sessionId)
+                       : QStringLiteral("/session/%1/abort").arg(m_sessionId),
+                QJsonObject{}, tr("Stopping"), [this] { turnEnded(true); });
 }
 
 void OpenCodeClient::answerPermission(const QString &permissionId, const QString &response)
@@ -946,27 +984,49 @@ void OpenCodeClient::selectAgent(const QString &agent)
 
 void OpenCodeClient::selectModel(const QString &providerID, const QString &modelID, const QString &variant)
 {
-    if (!isV2() || m_sessionId.isEmpty() || modelID.isEmpty())
+    if (m_sessionId.isEmpty() || modelID.isEmpty())
         return;
+    if (!isV2()) {
+        emit requestFailed(tr("This opencode version keeps its own model: change it in opencode."));
+        return;
+    }
     QJsonObject model{{"id", modelID}, {"providerID", providerID}};
     if (!variant.isEmpty())
         model.insert("variant", variant);
     const QString session = m_sessionId;
-    postCommand(QStringLiteral("/api/session/%1/model").arg(session), QJsonObject{{"model", model}},
-                tr("Switching the model"), [this, session, model] {
-                    emit serverEvent(QStringLiteral("session.model.selected"),
-                                     QJsonObject{{"sessionID", session}, {"model", model}});
-                });
+    const QString path = QStringLiteral("/api/session/%1/model").arg(session);
+    QNetworkReply *r = m_nam->post(makeRequest(path), QJsonDocument(QJsonObject{{"model", model}}).toJson(QJsonDocument::Compact));
+    connect(r, &QNetworkReply::finished, this, [this, r, session, model, modelID] {
+        r->deleteLater();
+        if (r->error() == QNetworkReply::NoError) {
+            // The server took it: only now does the overlay show this model as the active one.
+            emit serverEvent(QStringLiteral("session.model.selected"),
+                             QJsonObject{{"sessionID", session}, {"model", model}});
+            return;
+        }
+        emit requestFailed(tr("Could not switch the model to %1: %2").arg(modelID, r->errorString()));
+        // Read the session again so the overlay shows the model that is really in use.
+        if (session == m_sessionId)
+            fetchJson(QStringLiteral("/api/session/%1").arg(session));
+    });
 }
 
 void OpenCodeClient::setConnected(bool c)
 {
     if (c == m_connected)
         return;
+    const bool wasConnected = m_connected;
     m_connected = c;
     if (c) {
         setError(QString());
         setMissing(false);
+        if (m_lostConnection) {
+            m_lostConnection = false;
+            emit requestFailed(tr("Reconnected to opencode."));
+        }
+    } else if (wasConnected) {
+        m_lostConnection = true;
+        emit requestFailed(tr("The connection to opencode was lost. Qute keeps trying to reconnect."));
     }
     emit connectedChanged(c);
 }

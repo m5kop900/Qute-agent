@@ -1,4 +1,7 @@
 #include "sessionstore.h"
+#include "compactionpolicy.h"
+
+#include <QDateTime>
 
 #include "appconfig.h"
 #include "conversationmodel.h"
@@ -87,17 +90,27 @@ SessionStore::SessionStore(OpenCodeClient *client, AppConfig *config, OpenCodeCa
         connect(m_client, &OpenCodeClient::serverEvent, this, &SessionStore::onEvent);
         connect(m_client, &OpenCodeClient::messageHistoryReceived, this, &SessionStore::onMessages);
         connect(m_client, &OpenCodeClient::historyFailed, this, [this] { setLoadingHistory(false); });
+        connect(m_client, &OpenCodeClient::requestFailed, this, [this] { m_modelPushPending = false; });
         connect(m_client, &OpenCodeClient::promptSent, this, &SessionStore::onPromptSent);
         connect(m_client, &OpenCodeClient::connectedChanged, this, &SessionStore::onConnectedChanged);
         connect(m_client, &OpenCodeClient::sessionChanged, this, &SessionStore::sessionChanged);
         connect(m_client, &OpenCodeClient::jsonFetched, this, &SessionStore::onJsonFetched);
     }
+    // F5: check the automatic compaction rules whenever the context or the turn state changes.
+    connect(this, &SessionStore::busyChanged, this, &SessionStore::maybeAutoCompact);
+    connect(this, &SessionStore::contextChanged, this, &SessionStore::maybeAutoCompact);
+    m_compactWatchdog.setSingleShot(true);
+    m_compactWatchdog.setInterval(45 * 1000);
+    connect(&m_compactWatchdog, &QTimer::timeout, this, [this] {
+        if (!m_compactInFlight)
+            return;
+        m_conversation->addNotice(tr("The compaction did not finish: opencode gave no answer."));
+        finishCompaction(false);
+    });
     if (m_catalog) {
         connect(m_catalog, &OpenCodeCatalog::modelsChanged, this, [this] {
             recomputeContextLimit();
-            adoptDefaultModel();
         });
-        connect(m_catalog, &OpenCodeCatalog::defaultModelChanged, this, &SessionStore::adoptDefaultModel);
     }
     if (m_config) {
         connect(m_config, &AppConfig::changed, this, [this] {
@@ -129,6 +142,8 @@ void SessionStore::setBusy(bool busy)
     if (busy == m_busy)
         return;
     m_busy = busy;
+    if (!busy)
+        m_conversation->clearRetryNotice();       // a finished or stopped turn is not retrying any more
     emit busyChanged();
 }
 
@@ -205,19 +220,10 @@ void SessionStore::recomputeContextLimit()
     setContextLimit(limit);
 }
 
-void SessionStore::adoptDefaultModel()
-{
-    if (!m_modelId.isEmpty() || !m_catalog)
-        return;
-    const QVariantMap model = m_catalog->defaultModel();
-    if (model.isEmpty())
-        return;
-    // No variant: the server picks the provider default until the user chooses an effort.
-    setActiveModel(model.value("providerID").toString(), model.value("modelID").toString(), QString());
-}
-
 void SessionStore::onPromptSent(const QString &text, const QStringList &attachmentNames)
 {
+    ++m_promptCount;
+    m_compactFailures = 0;     // the user acted: a new attempt is allowed after failures
     setBusy(true);
     m_conversation->applyUserPrompt(text, attachmentNames);
 }
@@ -276,7 +282,17 @@ void SessionStore::selectModel(const QString &providerID, const QString &modelID
 {
     if (modelID.isEmpty())
         return;
+    if (m_client && !m_client->isV2Server()) {
+        m_conversation->addNotice(tr("This opencode version keeps its own model: change it in opencode."));
+        return;
+    }
     setActiveModel(providerID, modelID, variant);
+    // The user's choice is remembered for the next start and for other sessions.
+    if (m_config) {
+        m_config->setModelProvider(providerID);
+        m_config->setModelId(modelID);
+        m_config->save();
+    }
     if (m_client)
         m_client->selectModel(providerID, modelID, variant);
 }
@@ -287,6 +303,14 @@ void SessionStore::onEvent(const QString &type, const QJsonObject &p)
         // /new or /session: the view belongs to the previous session. Start clean, then load the new one.
         m_conversation->clear();
         setBusy(false);
+        // A new session starts with a clean compaction history.
+        m_compactWatchdog.stop();
+        m_compactInFlight = false;
+        m_serverCompacts = false;
+        m_compactFailures = 0;
+        m_lastCompactRequestMs = -1;
+        m_promptCount = 0;
+        m_promptsAtLastCompaction = -1;
         if (!m_sessionDirectory.isEmpty()) {
             m_sessionDirectory.clear();
             emit sessionDirectoryChanged();
@@ -297,6 +321,9 @@ void SessionStore::onEvent(const QString &type, const QJsonObject &p)
         }
         setContextTokens(0);
         const QString sid = p.value(QStringLiteral("sessionID")).toString();
+        // The switched-to session shows its OWN model, read from the server: the chip stays empty until it is known.
+        m_modelPushPending = false;
+        clearActiveModel();
         if (m_client && !sid.isEmpty()) {
             setLoadingHistory(true);
             m_client->requestMessageHistory();
@@ -305,6 +332,17 @@ void SessionStore::onEvent(const QString &type, const QJsonObject &p)
         }
         return;
     }
+    // F5: track compaction. A "started" we did not request means the server compacts by itself.
+    if (type == QLatin1String("session.compaction.started")) {
+        if (!m_compactInFlight)
+            m_serverCompacts = true;
+        m_compactInFlight = true;
+    } else if (type == QLatin1String("session.compaction.ended")) {
+        finishCompaction(true);
+    } else if (type == QLatin1String("session.compaction.failed")) {
+        finishCompaction(false);
+    }
+
     m_conversation->applyEvent(type, p);
 
     // The compaction summary is written by the server: reload the history so it shows up as its own entry.
@@ -338,6 +376,7 @@ void SessionStore::onEvent(const QString &type, const QJsonObject &p)
     if (type == QLatin1String("session.agent.selected")) {
         setActiveAgent(firstString(p, {"agent", "name", "id"}));
     } else if (type == QLatin1String("session.model.selected")) {
+        m_modelPushPending = false;
         QString provider;
         QString id;
         QString variant;
@@ -410,6 +449,12 @@ void SessionStore::applySessionInfo(const QJsonObject &object)
         m.insert("cost", usage.value("cost").toDouble());
 
     setActiveAgent(firstString(o, {"agent"}));
+    QString infoProvider;
+    QString infoId;
+    QString infoVariant;
+    if (!m_modelPushPending && (readModelOf(o, infoProvider, infoId, infoVariant)
+                                || readModelRef(o.value("model"), infoProvider, infoId, infoVariant)))
+        setActiveModel(infoProvider, infoId, infoVariant);
 
     // Session tokens are cumulative, so they are NOT the context window usage; only agent/model are taken here.
     if (o.contains("model")) {
@@ -465,6 +510,22 @@ void SessionStore::onMessages(const QJsonArray &messagesAscending)
     setLoadingHistory(false);
     m_conversation->applyMessages(messagesAscending);
     deriveFromMessages(messagesAscending);
+    // An empty session has no messages to read its model from: show opencode's default, which is what it uses.
+    if (m_modelId.isEmpty() && m_catalog && !m_catalog->defaultModel().isEmpty()) {
+        const QVariantMap def = m_catalog->defaultModel();
+        setActiveModel(def.value("providerID").toString(), def.value("modelID").toString(), QString());
+    }
+}
+
+void SessionStore::clearActiveModel()
+{
+    if (m_modelProvider.isEmpty() && m_modelId.isEmpty() && m_variant.isEmpty())
+        return;
+    m_modelProvider.clear();
+    m_modelId.clear();
+    m_variant.clear();
+    recomputeContextLimit();
+    emit activeModelChanged();
 }
 
 void SessionStore::setLoadingHistory(bool loading)
@@ -473,4 +534,51 @@ void SessionStore::setLoadingHistory(bool loading)
         return;
     m_loadingHistory = loading;
     emit loadingHistoryChanged();
+}
+
+void SessionStore::requestCompaction()
+{
+    startCompaction(false);
+}
+
+void SessionStore::startCompaction(bool automatic)
+{
+    if (!m_client || m_client->sessionId().isEmpty())
+        return;
+    m_compactInFlight = true;
+    m_lastCompactRequestMs = QDateTime::currentMSecsSinceEpoch();
+    m_compactWatchdog.start();
+    if (automatic)
+        m_conversation->addNotice(tr("Context is at %1 %%: compacting the session…").arg(m_contextPercent));
+    m_client->compactSession();
+}
+
+void SessionStore::finishCompaction(bool ok)
+{
+    m_compactWatchdog.stop();
+    m_compactInFlight = false;
+    if (ok) {
+        m_compactFailures = 0;
+        m_promptsAtLastCompaction = m_promptCount;   // the next automatic one needs a new prompt first
+    } else {
+        ++m_compactFailures;
+    }
+}
+
+void SessionStore::maybeAutoCompact()
+{
+    if (!m_config || !m_client)
+        return;
+    CompactionState s;
+    s.enabled = m_config->autoCompactEnabled();
+    s.contextPercent = m_contextPercent;
+    s.thresholdPercent = m_config->autoCompactThreshold();
+    s.busy = m_busy || m_loadingHistory;
+    s.compactionInFlight = m_compactInFlight;
+    s.serverCompactsItself = m_serverCompacts;
+    s.failures = m_compactFailures;
+    s.msSinceLastRequest = m_lastCompactRequestMs < 0 ? -1 : QDateTime::currentMSecsSinceEpoch() - m_lastCompactRequestMs;
+    s.turnsSinceLastCompaction = m_promptsAtLastCompaction < 0 ? -1 : m_promptCount - m_promptsAtLastCompaction;
+    if (CompactionPolicy::shouldCompact(s))
+        startCompaction(true);
 }

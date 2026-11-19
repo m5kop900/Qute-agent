@@ -14,6 +14,15 @@ Item {
     property real maxHeight: Math.round(160 * s)
     signal picked(string key)
 
+    // True only while the mouse is choosing the row. Hover moves the highlight without scrolling: scrolling
+    // moved the rows under the pointer, which picked another row, which scrolled again (the highlight and the
+    // row that Enter picks drifted apart). Keyboard moves still scroll the highlighted row into view.
+    property bool hoverDriven: false
+    onIndexChanged: {
+        if (!hoverDriven && index >= 0 && index < items.length)
+            list.positionViewAtIndex(index, ListView.Contain)
+    }
+
     readonly property real pad: Math.round(6 * s)
     readonly property real rowHeight: Math.round(34 * s)
     implicitHeight: Math.min(maxHeight, items.length * rowHeight) + 2 * pad
@@ -35,7 +44,7 @@ Item {
         model: root.items
         boundsBehavior: ListView.StopAtBounds
         currentIndex: root.index
-        highlightFollowsCurrentItem: true
+        highlightFollowsCurrentItem: false
         highlightMoveDuration: 0
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
@@ -101,7 +110,11 @@ Item {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 hoverEnabled: true
-                onEntered: root.index = row.index
+                onEntered: {
+                    root.hoverDriven = true
+                    root.index = row.index
+                    root.hoverDriven = false
+                }
                 onClicked: root.picked(String(row.modelData.key))
             }
         }

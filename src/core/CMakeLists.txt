@@ -12,6 +12,7 @@ qt_add_library(qute_core STATIC
     slashcommands.cpp    slashcommands.h
     composertokens.cpp   composertokens.h
     attachmentmodel.cpp  attachmentmodel.h
+    compactionpolicy.cpp compactionpolicy.h
 )
 
 target_include_directories(qute_core PUBLIC

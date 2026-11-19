@@ -87,6 +87,15 @@ void ConversationModel::setStreaming(int row, bool streaming)
     touch(row);
 }
 
+int ConversationModel::countServerRows() const
+{
+    int n = 0;
+    for (const Item &it : m_items)
+        if (!it.local)
+            ++n;
+    return n;
+}
+
 int ConversationModel::upsert(const Item &item)
 {
     const int existing = indexOf(item.kind, item.id);
@@ -103,7 +112,12 @@ int ConversationModel::upsert(const Item &item)
     }
     const int row = m_items.size();
     beginInsertRows({}, row, row);
-    m_items.append(item);
+    Item fresh = item;
+    if (fresh.kind == QLatin1String("notice")) {      // every notice is a local row, wherever it is created
+        fresh.local = true;
+        fresh.serverRows = countServerRows();
+    }
+    m_items.append(fresh);
     endInsertRows();
     emit countChanged();
     return row;
@@ -117,6 +131,8 @@ void ConversationModel::appendNotice(const QString &text)
     it.kind = QStringLiteral("notice");
     it.id = QStringLiteral("notice:%1").arg(m_items.size());
     it.text = text;
+    it.local = true;
+    it.serverRows = countServerRows();
     upsert(it);
 }
 
@@ -232,6 +248,8 @@ void ConversationModel::applyUserPrompt(const QString &text, const QStringList &
     it.kind = QStringLiteral("user");
     it.id = QStringLiteral("user:local-%1").arg(++m_userPromptSeq);
     it.text = text;
+    it.local = true;
+    it.serverRows = countServerRows();
     it.attachments = attachmentNames;
     upsert(it);
 }
@@ -242,6 +260,17 @@ QString ConversationModel::lastAssistantText() const
         if (m_items.at(i).kind == QLatin1String("assistant-text") && !m_items.at(i).text.trimmed().isEmpty())
             return m_items.at(i).text;
     return {};
+}
+
+void ConversationModel::clearRetryNotice()
+{
+    const int row = indexOf(QStringLiteral("notice"), QStringLiteral("notice:retry"));
+    if (row < 0)
+        return;
+    beginRemoveRows(QModelIndex(), row, row);
+    m_items.removeAt(row);
+    endRemoveRows();
+    emit countChanged();
 }
 
 void ConversationModel::clear()
@@ -464,6 +493,33 @@ void ConversationModel::applyEvent(const QString &type, const QJsonObject &p)
     }
 }
 
+// A local row goes right after the server row it was added after (serverRows server rows came before it). Rows
+// added after the same point keep their order. With fewer server rows than that, the row goes to the end.
+static void placeAtServerRow(QList<ConversationModel::Item> &list, const ConversationModel::Item &it)
+{
+    if (it.serverRows < 0) {
+        list << it;
+        return;
+    }
+    int pos = list.size();
+    if (it.serverRows == 0) {
+        pos = 0;
+    } else {
+        int seen = 0;
+        for (int i = 0; i < list.size(); ++i) {
+            if (list.at(i).local)
+                continue;
+            if (++seen == it.serverRows) {
+                pos = i + 1;
+                break;
+            }
+        }
+    }
+    while (pos < list.size() && list.at(pos).local && list.at(pos).serverRows == it.serverRows)
+        ++pos;
+    list.insert(pos, it);
+}
+
 void ConversationModel::applyMessages(const QJsonArray &asc)
 {
     QList<Item> pending;
@@ -603,7 +659,8 @@ void ConversationModel::applyMessages(const QJsonArray &asc)
     for (const Item &it : std::as_const(out))
         if (!(it.kind == QLatin1String("request") && it.status == QLatin1String("pending")))
             merged << it;
-    merged << keptLocal;
+    for (const Item &loc : std::as_const(keptLocal))
+        placeAtServerRow(merged, loc);
     for (const Item &p : std::as_const(pending))
         merged << p;
     out = merged;

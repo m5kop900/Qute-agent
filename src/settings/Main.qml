@@ -123,6 +123,13 @@ ApplicationWindow {
                     anchors.fill: parent
                     CheckBox { text: qsTr("Open next to the mouse cursor"); checked: config.placeAtCursor; onToggled: config.placeAtCursor = checked }
                     CheckBox { text: qsTr("Hide when the window loses focus"); checked: config.hideOnFocusLoss; onToggled: config.hideOnFocusLoss = checked }
+                    CheckBox { text: qsTr("Compact the session automatically when the context fills up"); checked: config.autoCompactEnabled; onToggled: config.autoCompactEnabled = checked }
+                    RowLayout {
+                        enabled: config.autoCompactEnabled
+                        Label { text: qsTr("Compact at") }
+                        Slider { Layout.fillWidth: true; from: 50; to: 95; stepSize: 5; value: config.autoCompactThreshold; onMoved: config.autoCompactThreshold = Math.round(value) }
+                        Label { text: config.autoCompactThreshold + " %" }
+                    }
                 }
             }
 

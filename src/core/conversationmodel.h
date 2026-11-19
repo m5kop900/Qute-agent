@@ -46,6 +46,10 @@ public:
         QString detail;
         bool streaming = false;
         QStringList attachments;   // user prompts: file names sent with the prompt
+        // Local rows (notices, prompts not echoed yet). They are placed by how many server rows came before them,
+        // not by id: the live rows and the history rows have different ids, so an id anchor was lost on refresh.
+        bool local = false;
+        int serverRows = -1;     // local rows: server rows that were present when the row was added
     };
 
     explicit ConversationModel(QObject *parent = nullptr);
@@ -65,6 +69,9 @@ public:
     void applyMessages(const QJsonArray &messagesAscending);
     Q_INVOKABLE void clear();
     Q_INVOKABLE void addNotice(const QString &text);   // local feedback (slash commands, errors)
+    // Removes the "Retrying…" line once the turn is over (finished or stopped).
+    void clearRetryNotice();
+    int countServerRows() const;
     // Text of the newest assistant answer (for /copy). Empty when there is none.
     Q_INVOKABLE QString lastAssistantText() const;
 

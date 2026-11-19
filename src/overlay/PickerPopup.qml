@@ -52,6 +52,33 @@ Popup {
         return out
     }
 
+    // The highlighted row: the one the arrow keys and the mouse move. Enter picks exactly this row.
+    function resetHighlight() {
+        const n = filtered.length
+        let idx = 0
+        for (let i = 0; i < n; ++i)
+            if (String(filtered[i].key) === currentKey) { idx = i; break }
+        list.currentIndex = n > 0 ? idx : -1
+    }
+    function moveHighlight(delta) {
+        const n = filtered.length
+        if (n === 0)
+            return
+        const cur = list.currentIndex
+        list.currentIndex = cur < 0 ? (delta > 0 ? 0 : n - 1) : (cur + delta + n) % n
+    }
+    function acceptCurrent() {
+        const i = list.currentIndex
+        if (i >= 0 && i < filtered.length)
+            accept(filtered[i])
+        else if (filtered.length > 0)
+            accept(filtered[0])
+    }
+    onFilteredChanged: resetHighlight()
+    // Mouse hover sets the same highlight but must not scroll the list under the pointer (that moved the rows
+    // under the mouse, and the highlight drifted away from the row that Enter picks).
+    property bool hoverDriven: false
+
     function accept(item) {
         if (!item)
             return
@@ -62,6 +89,7 @@ Popup {
     onOpened: {
         opacity = 1
         scale = 1
+        resetHighlight()
         if (searchable)
             search.forceActiveFocus()
         else
@@ -128,9 +156,9 @@ Popup {
                 border.width: 1
                 border.color: search.activeFocus ? root.theme.accent : "transparent"
             }
-            onAccepted: root.accept(root.filtered.length > 0 ? root.filtered[0] : null)
-            Keys.onDownPressed: list.incrementCurrentIndex()
-            Keys.onUpPressed: list.decrementCurrentIndex()
+            onAccepted: root.acceptCurrent()
+            Keys.onDownPressed: root.moveHighlight(1)
+            Keys.onUpPressed: root.moveHighlight(-1)
         }
 
         ListView {
@@ -141,6 +169,10 @@ Popup {
             clip: true
             model: root.filtered
             currentIndex: -1
+            highlightFollowsCurrentItem: false
+            onCurrentIndexChanged: if (!root.hoverDriven && currentIndex >= 0) positionViewAtIndex(currentIndex, ListView.Contain)
+            Keys.onReturnPressed: root.acceptCurrent()
+            Keys.onEnterPressed: root.acceptCurrent()
             boundsBehavior: ListView.StopAtBounds
             spacing: 1
             ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
@@ -157,7 +189,7 @@ Popup {
                 radius: Math.round(6 * root.s)
                 color: modelData.key === root.currentKey
                        ? Qt.rgba(root.theme.accent.r, root.theme.accent.g, root.theme.accent.b, 0.13)
-                       : hover.hovered || ListView.isCurrentItem
+                       : ListView.isCurrentItem
                          ? Qt.rgba(root.theme.text.r, root.theme.text.g, root.theme.text.b, 0.07)
                          : "transparent"
 
@@ -215,7 +247,15 @@ Popup {
                     font.bold: true
                 }
 
-                HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
+                HoverHandler {
+                    id: hover
+                    cursorShape: Qt.PointingHandCursor
+                    onHoveredChanged: if (hovered) {
+                        root.hoverDriven = true
+                        list.currentIndex = row.index
+                        root.hoverDriven = false
+                    }
+                }
                 TapHandler { onTapped: root.accept(row.modelData) }
             }
         }

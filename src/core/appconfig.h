@@ -33,6 +33,8 @@ class AppConfig : public QObject {
     Q_PROPERTY(bool placeAtCursor READ placeAtCursor WRITE setPlaceAtCursor NOTIFY changed)
     Q_PROPERTY(bool hideOnFocusLoss READ hideOnFocusLoss WRITE setHideOnFocusLoss NOTIFY changed)
     Q_PROPERTY(int maxAttachmentSizeMB READ maxAttachmentSizeMB WRITE setMaxAttachmentSizeMB NOTIFY changed) // 0 = no limit (F1.1)
+    Q_PROPERTY(bool autoCompactEnabled READ autoCompactEnabled WRITE setAutoCompactEnabled NOTIFY changed)     // F5
+    Q_PROPERTY(int autoCompactThreshold READ autoCompactThreshold WRITE setAutoCompactThreshold NOTIFY changed) // F5, %
 
 public:
     explicit AppConfig(QObject *parent = nullptr);
@@ -61,6 +63,8 @@ public:
     bool placeAtCursor() const { return m_placeAtCursor; }
     int maxAttachmentSizeMB() const { return m_maxAttachmentSizeMB; }
     bool hideOnFocusLoss() const { return m_hideOnFocusLoss; }
+    bool autoCompactEnabled() const { return m_autoCompactEnabled; }
+    int autoCompactThreshold() const { return m_autoCompactThreshold; }
 
     void setServerUrl(const QString &v) { assign(m_serverUrl, v); }
     void setMaxAttachmentSizeMB(int v) { assign(m_maxAttachmentSizeMB, qMax(0, v)); }
@@ -80,6 +84,8 @@ public:
     void setScale(double v) { assign(m_scale, qBound(0.5, v, 3.0)); }
     void setPlaceAtCursor(bool v) { assign(m_placeAtCursor, v); }
     void setHideOnFocusLoss(bool v) { assign(m_hideOnFocusLoss, v); }
+    void setAutoCompactEnabled(bool v) { assign(m_autoCompactEnabled, v); }
+    void setAutoCompactThreshold(int v) { assign(m_autoCompactThreshold, qBound(50, v, 95)); }
 
 signals:
     void changed();
@@ -113,6 +119,8 @@ private:
     double m_scale = 1.0;
     bool m_placeAtCursor = true;
     bool m_hideOnFocusLoss = false;
+    bool m_autoCompactEnabled = true;
+    int m_autoCompactThreshold = 80;
 
     QFileSystemWatcher *m_watcher = nullptr;
     QTimer m_debounce;

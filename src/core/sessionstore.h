@@ -2,6 +2,7 @@
 #include <QJsonObject>
 #include <QObject>
 #include <QString>
+#include <QTimer>
 #include <QVariantMap>
 
 class AppConfig;
@@ -78,6 +79,8 @@ public slots:
     // there is nothing to switch to.
     Q_INVOKABLE QString cycleAgent();
     Q_INVOKABLE void selectModel(const QString &providerID, const QString &modelID, const QString &variant);
+    // /compact and the automatic trigger both go through here, so the policy knows about every compaction.
+    Q_INVOKABLE void requestCompaction();
 
 signals:
     void busyChanged();
@@ -99,12 +102,27 @@ private:
     void setContextTokens(qint64 tokens);
     void setContextLimit(qint64 limit);
     void recomputeContextLimit();
-    void adoptDefaultModel();
+    // opencode keeps one model per session. The chip always shows the model the session really uses: it is cleared
+    // on a switch and filled from the server (session info, then the last answer's model).
+    void clearActiveModel();
+    bool m_modelPushPending = false;  // a model change is on its way to the server: do not overwrite it from info
     void onJsonFetched(const QString &path, const QJsonDocument &document, int status);
     void deriveFromMessages(const QJsonArray &messagesAscending);
 
     OpenCodeClient *m_client = nullptr;
     AppConfig *m_config = nullptr;
+
+    // F5 automatic compaction state (see compactionpolicy.h).
+    void startCompaction(bool automatic);
+    void finishCompaction(bool ok);
+    void maybeAutoCompact();
+    bool m_compactInFlight = false;               // our request is on its way, or the server is compacting
+    bool m_serverCompacts = false;                // the server compacted without a request from us
+    int m_compactFailures = 0;
+    qint64 m_lastCompactRequestMs = -1;
+    int m_promptCount = 0;
+    int m_promptsAtLastCompaction = -1;
+    QTimer m_compactWatchdog;                     // a request that never gets an answer counts as a failure
     OpenCodeCatalog *m_catalog = nullptr;
     ConversationModel *m_conversation;
     bool m_busy = false;
