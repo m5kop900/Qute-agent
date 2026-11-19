@@ -38,7 +38,7 @@ Item {
                 fillMode: Image.PreserveAspectFit
                 clip: true
                 visible: root.isImage && attachment.dataUrl
-                statusChanged: if (status === Image.Error) visible = false
+                onStatusChanged: if (status === Image.Error) visible = false
             }
             Label {
                 anchors.fill: parent

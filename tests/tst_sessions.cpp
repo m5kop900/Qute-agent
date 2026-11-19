@@ -6,7 +6,9 @@
 
 #include "mockopencodeserver.h"
 
+#include <QJsonArray>
 #include <QJsonDocument>
+#include <QJsonObject>
 #include <QtTest>
 
 static QByteArray bytes(const char *s) { return QByteArray(s); }
@@ -119,6 +121,134 @@ private slots:
         client.switchSession(QStringLiteral("../../etc"));
         QVERIFY(!error.isEmpty());
         QCOMPARE(client.sessionId(), QString());
+    }
+
+    // F1.4: running a server command posts the documented body to the current session.
+    void promptWithFilesPostsFlatBodyWithFiles()
+    {
+        MockOpenCodeServer server;
+        QVERIFY(server.start());
+        server.setEventFrames({QStringLiteral(R"({"type":"server.connected","properties":{}})")});
+        server.setJson("/api/model", bytes(R"({"data":[]})"));
+        server.setJson("/api/model/default", bytes(R"({"data":{}})"));
+        server.setJson("/api/agent", bytes(R"({"data":[]})"));
+        server.setJson("/api/session/ses_mock", bytes(R"({"data":{"id":"ses_mock"}})"));
+        server.setJson("/api/session/ses_mock/message", bytes(R"({"data":[],"cursor":{"next":null}})"));
+        server.setJson("/api/session/ses_mock/prompt", bytes(R"({"data":{}})"));
+
+        AppConfig config;
+        config.setServerUrl(server.baseUrl());
+        config.setServerPassword(QString());
+        config.setApiFlavor(QStringLiteral("v2"));
+        config.setAutoStartServer(false);
+        config.setLastSessionId(QStringLiteral("ses_mock"));
+
+        OpenCodeClient client(&config);
+        client.start();
+        QTRY_COMPARE_WITH_TIMEOUT(client.sessionId(), QStringLiteral("ses_mock"), 5000);
+
+        QVariantList files;
+        files << QVariantMap{{"uri", "file:///tmp/a.txt"}, {"name", "a.txt"}};
+        files << QVariantMap{{"uri", "data:image/png;base64,iVBORw0="}, {"name", "shot.png"}};
+        QVERIFY(client.sendPromptWithFiles(QStringLiteral("what is in these"), files, QVariantList{QVariantMap{{"name", "build"}}}));
+
+        QTRY_VERIFY_WITH_TIMEOUT([&server] {
+            for (const MockOpenCodeServer::Request &r : server.requests())
+                if (r.method == "POST" && r.path == "/api/session/ses_mock/prompt") return true;
+            return false;
+        }(), 5000);
+        for (const MockOpenCodeServer::Request &r : server.requests()) {
+            if (r.path != "/api/session/ses_mock/prompt") continue;
+            const QJsonObject body = QJsonDocument::fromJson(r.body).object();
+            QCOMPARE(body.value("text").toString(), QStringLiteral("what is in these"));
+            QVERIFY(!body.contains("prompt"));          // flat body, not the old nested form
+            const QJsonArray sent = body.value("files").toArray();
+            QCOMPARE(sent.size(), 2);
+            QCOMPARE(sent.at(0).toObject().value("uri").toString(), QStringLiteral("file:///tmp/a.txt"));
+            QCOMPARE(sent.at(1).toObject().value("uri").toString(), QStringLiteral("data:image/png;base64,iVBORw0="));
+            QCOMPARE(sent.at(1).toObject().value("name").toString(), QStringLiteral("shot.png"));
+            QCOMPARE(body.value("agents").toArray().at(0).toObject().value("name").toString(), QStringLiteral("build"));
+        }
+    }
+
+    void compactPostsToNativeEndpoint()
+    {
+        MockOpenCodeServer server;
+        QVERIFY(server.start());
+        server.setEventFrames({QStringLiteral(R"({"type":"server.connected","properties":{}})")});
+        server.setJson("/api/model", bytes(R"({"data":[]})"));
+        server.setJson("/api/model/default", bytes(R"({"data":{}})"));
+        server.setJson("/api/agent", bytes(R"({"data":[]})"));
+        server.setJson("/api/session/ses_mock", bytes(R"({"data":{"id":"ses_mock"}})"));
+        server.setJson("/api/session/ses_mock/message", bytes(R"({"data":[],"cursor":{"next":null}})"));
+        server.setJson("/api/session/ses_mock/compact", bytes(R"({"data":{"type":"compaction"}})"));
+
+        AppConfig config;
+        config.setServerUrl(server.baseUrl());
+        config.setServerPassword(QString());
+        config.setApiFlavor(QStringLiteral("v2"));
+        config.setAutoStartServer(false);
+        config.setLastSessionId(QStringLiteral("ses_mock"));
+
+        OpenCodeClient client(&config);
+        client.start();
+        QTRY_COMPARE_WITH_TIMEOUT(client.sessionId(), QStringLiteral("ses_mock"), 5000);
+        client.compactSession();
+        QTRY_VERIFY_WITH_TIMEOUT([&server] {
+            for (const MockOpenCodeServer::Request &r : server.requests())
+                if (r.method == "POST" && r.path == "/api/session/ses_mock/compact") return true;
+            return false;
+        }(), 5000);
+    }
+
+    void serverCommandPostsNameAndText()
+    {
+        MockOpenCodeServer server;
+        QVERIFY(server.start());
+        server.setEventFrames({QStringLiteral(R"({"type":"server.connected","properties":{}})")});
+        server.setJson("/api/command", bytes(R"({"data":[{"name":"review","description":"Review the code"}]})"));
+        server.setJson("/api/model", bytes(R"({"data":[]})"));
+        server.setJson("/api/model/default", bytes(R"({"data":{}})"));
+        server.setJson("/api/agent", bytes(R"({"data":[]})"));
+        server.setJson("/api/session/ses_mock", bytes(R"({"data":{"id":"ses_mock"}})"));
+        server.setJson("/api/session/ses_mock/message", bytes(R"({"data":[],"cursor":{"next":null}})"));
+        server.setJson("/api/session/ses_mock/command", bytes("{}"), 204);
+
+        AppConfig config;
+        config.setServerUrl(server.baseUrl());
+        config.setServerPassword(QString());
+        config.setApiFlavor(QStringLiteral("v2"));
+        config.setAutoStartServer(false);
+        config.setLastSessionId(QStringLiteral("ses_mock"));
+
+        OpenCodeClient client(&config);
+        client.start();
+        QTRY_COMPARE_WITH_TIMEOUT(client.sessionId(), QStringLiteral("ses_mock"), 5000);
+
+        client.runServerCommand(QStringLiteral("review"), QStringLiteral("src/core"), QVariantList{}, QVariantList{});
+        QTRY_VERIFY_WITH_TIMEOUT([&server] {
+            for (const MockOpenCodeServer::Request &r : server.requests())
+                if (r.method == "POST" && r.path == "/api/session/ses_mock/command") return true;
+            return false;
+        }(), 5000);
+        // Regression: the body key is "command" (opencode 2 answers 400 "Missing key [command]" to "name").
+        for (const MockOpenCodeServer::Request &r : server.requests()) {
+            if (r.path != "/api/session/ses_mock/command") continue;
+            const QJsonObject body = QJsonDocument::fromJson(r.body).object();
+            QCOMPARE(body.value("command").toString(), QStringLiteral("review"));
+            QCOMPARE(body.value("text").toString(), QStringLiteral("src/core"));
+            QVERIFY(body.contains("files"));
+        }
+
+        QJsonObject body;
+        for (const MockOpenCodeServer::Request &r : server.requests())
+            if (r.method == "POST" && r.path == "/api/session/ses_mock/command")
+                body = QJsonDocument::fromJson(r.body).object();
+        QCOMPARE(body.value("command").toString(), QStringLiteral("review"));
+        QCOMPARE(body.value("text").toString(), QStringLiteral("src/core"));
+        QVERIFY(body.value("files").isArray());
+        QVERIFY(body.value("agents").isArray());
+        QVERIFY(body.value("skills").isArray());
     }
 };
 

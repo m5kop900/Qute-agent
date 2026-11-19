@@ -154,7 +154,20 @@ attachments, selectors or a context ring. Building those features on top of that
 
 ## F1 — Prompt box & input system (priority: Critical)
 Depends on: F0.1–F0.3. **Audit:** see table (single-line field, text only).
+
+> **F1 status (not checked off):** F1.4 (slash commands) is implemented and unit-tested; live check pending.
+> F1.1 (attachments), F1.2 (clipboard image paste) and F1.3 (`@` mentions) are **not started**: they need the prompt
+> `files` field, a preview strip, clipboard MIME handling and a file-search popup. They are the next work for F1.
 Prompt body reminder (V2, flat): `{text, files?, agents?, skills?, delivery?}`; file = `{data: base64, mime, source: {type: "inline" | "uri"}}` **(verify** exact field names, e.g. filename**)**.
+
+> **F1 status (this session, evidence in git):** F1.4 (slash list incl. all opencode built-ins, `/compact` native), F1.1
+> (attach button, drag & drop, file dialog, size/type/duplicate checks), F1.2 (Ctrl+V image) and F1.3 (`@` files and agents)
+> are implemented. Automated: `tst_slashcommands`, `tst_composertokens`, `tst_attachments`, `tst_sessions`, `tst_catalog`,
+> the QML UI tests `tst_composer_ui` (11 cases: `/` and `@` lists, picking, Esc, email is not a mention), and the live check
+> `tst_live` against a real OpenCode 2 server (compaction, file prompt, project command in the "/" list). Qt 6.8 build green.
+> **Still needs your eyes (GUI, not checkable headless):** Ctrl+V with a screenshot, drag a file onto the box, the `+` button and
+> file dialog, `@` list with arrow keys, the TUI-tagged commands, and a model answer about an attached file (no model
+> provider on the test server). The boxes below stay unchecked until those pass.
 
 ### F1.1 File attachments
 - [ ] Attach files via button/file dialog and **drag-and-drop** (QML `DropArea`); several at once.
@@ -177,9 +190,12 @@ Prompt body reminder (V2, flat): `{text, files?, agents?, skills?, delivery?}`; 
 - *Tests:* parser/token tests (`@` detection, cursor position), mock-server search. *Live:* `@README.md summarize`.
 
 ### F1.4 Slash commands
-> **Status (not checked off, live check pending):** typing `/` opens a list above the prompt box (local commands first,
-> then the server's), filtered as you type. Up/Down + Enter/Tab, or a click, runs the entry; Esc closes the list. Server
-> commands run via `runServerCommand` (verify endpoint). Tests: none for the list filter yet (it lives in QML).
+> **Status (not checked off, live check pending):** typing `/` opens a list in the window's drop room (it does not
+> resize the window), local commands first, then the server's, filtered as you type. Up/Down + Enter/Tab or a click runs
+> the entry; Esc closes the list. Local entries carry a "QUTE" tag. Arguments after the name are passed as `text`.
+> Dispatch posts `{name, text, files, agents, skills}` to `POST /api/session/{id}/command` (verify endpoint).
+> Tests: `tst_sessions::serverCommandPostsNameAndText` (mock server) and `tst_catalog` (command parsing).
+> Not tested: the list filter and keyboard handling (QML only). Attachments in commands wait for F1.1.
 - [ ] Typing `/` at the start opens command suggestions from `GET /api/command` **(verify)** (built-in and project-defined; descriptions shown).
 - [ ] Keyboard navigation and selection; arguments after the command name.
 - [ ] Execute through the native mechanism `POST /api/session/{id}/command {name, text, files, agents, skills}` **(verify)**.

@@ -32,6 +32,7 @@ class AppConfig : public QObject {
     // --- behavior ---
     Q_PROPERTY(bool placeAtCursor READ placeAtCursor WRITE setPlaceAtCursor NOTIFY changed)
     Q_PROPERTY(bool hideOnFocusLoss READ hideOnFocusLoss WRITE setHideOnFocusLoss NOTIFY changed)
+    Q_PROPERTY(int maxAttachmentSizeMB READ maxAttachmentSizeMB WRITE setMaxAttachmentSizeMB NOTIFY changed) // 0 = no limit (F1.1)
 
 public:
     explicit AppConfig(QObject *parent = nullptr);
@@ -58,9 +59,11 @@ public:
     QString accentColor() const { return m_accentColor; }
     double scale() const { return m_scale; }
     bool placeAtCursor() const { return m_placeAtCursor; }
+    int maxAttachmentSizeMB() const { return m_maxAttachmentSizeMB; }
     bool hideOnFocusLoss() const { return m_hideOnFocusLoss; }
 
     void setServerUrl(const QString &v) { assign(m_serverUrl, v); }
+    void setMaxAttachmentSizeMB(int v) { assign(m_maxAttachmentSizeMB, qMax(0, v)); }
     void setServerUsername(const QString &v) { assign(m_serverUsername, v); }
     void setServerPassword(const QString &v) { assign(m_serverPassword, v); }
     void setAutoStartServer(bool v) { assign(m_autoStartServer, v); }
@@ -82,6 +85,8 @@ signals:
     void changed();
 
 private:
+    int m_maxAttachmentSizeMB = 0;
+
     template <typename T> void assign(T &member, const T &value)
     {
         if (member == value)

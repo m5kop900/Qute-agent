@@ -1,5 +1,7 @@
 #include "opencodecatalog.h"
 
+#include "slashcommands.h"
+
 #include "opencodeclient.h"
 
 #include <QJsonArray>
@@ -177,10 +179,16 @@ QVariantList OpenCodeCatalog::parseCommands(const QJsonDocument &doc)
     if (!out.isEmpty())
         return out;
 
-    // Some builds return a map: {"init": {"description": ...}}
+    // A response with a "data" array is authoritative even when it is empty. Falling through to the map form below
+    // would read the envelope's "location" object as a command (seen against opencode 2).
     const QJsonObject root = doc.object();
+    if (root.contains(QLatin1String("data")) && root.value(QLatin1String("data")).isArray())
+        return out;
+
+    // Some builds return a map: {"init": {"description": ...}}
+    
     for (auto it = root.begin(); it != root.end(); ++it) {
-        if (!it.value().isObject() || it.key() == QLatin1String("data"))
+        if (!it.value().isObject() || it.key() == QLatin1String("data") || it.key() == QLatin1String("location"))
             continue;
         out << QVariantMap{{"name", it.key()},
                            {"description", firstString(it.value().toObject(), {"description", "detail"})}};
@@ -319,4 +327,9 @@ QVariantList OpenCodeCatalog::parseFiles(const QJsonDocument &doc)
         out << QVariantMap{{"path", path}, {"name", name}};
     }
     return out;
+}
+
+QVariantList OpenCodeCatalog::slashItems() const
+{
+    return mergeSlashItems(m_commands);
 }

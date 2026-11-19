@@ -25,6 +25,15 @@ private slots:
         QCOMPARE(b.first().toMap().value("name").toString(), QString("review"));
     }
 
+    void emptyDataEnvelopeGivesNoCommands()
+    {
+        // Regression: GET /api/command without a project location answers {"location":{...},"data":[]}. The envelope's
+        // "location" object used to be read as a command named "location".
+        const QVariantList none = OpenCodeCatalog::parseCommands(
+            doc(R"({"location":{"directory":"/tmp/p","project":{"id":"global"}},"data":[]})"));
+        QVERIFY(none.isEmpty());
+    }
+
     void parseModelsFlattensProvidersAndVariants()
     {
         const QVariantList models = OpenCodeCatalog::parseModels(
@@ -153,7 +162,7 @@ private slots:
         bool sawCommand = false;
         bool sawSearch = false;
         for (const MockOpenCodeServer::Request &r : server.requests()) {
-            sawCommand = sawCommand || (r.method == "GET" && r.path == "/api/command");
+            sawCommand = sawCommand || (r.method == "GET" && r.path.startsWith("/api/command"));   // + location[directory]=…
             sawSearch = sawSearch || (r.method == "GET" && r.path.startsWith("/api/fs/find?query=readme"));
         }
         QVERIFY(sawCommand);

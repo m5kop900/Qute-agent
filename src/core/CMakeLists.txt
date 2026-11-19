@@ -9,6 +9,9 @@ qt_add_library(qute_core STATIC
     opencodeclient.cpp   opencodeclient.h
     spritepackmanager.cpp spritepackmanager.h
     opencodelocator.cpp  opencodelocator.h
+    slashcommands.cpp    slashcommands.h
+    composertokens.cpp   composertokens.h
+    attachmentmodel.cpp  attachmentmodel.h
 )
 
 target_include_directories(qute_core PUBLIC

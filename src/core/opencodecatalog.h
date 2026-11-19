@@ -16,6 +16,7 @@ class OpenCodeClient;
 class OpenCodeCatalog : public QObject {
     Q_OBJECT
     Q_PROPERTY(QVariantList commands READ commands NOTIFY commandsChanged)
+    Q_PROPERTY(QVariantList slashItems READ slashItems NOTIFY commandsChanged)   // "/" list: built-ins + server (F1.4)
     Q_PROPERTY(QVariantList models READ models NOTIFY modelsChanged)
     Q_PROPERTY(QVariantList agents READ agents NOTIFY agentsChanged)
     Q_PROPERTY(QVariantList primaryAgents READ primaryAgents NOTIFY agentsChanged)
@@ -25,6 +26,7 @@ public:
     explicit OpenCodeCatalog(OpenCodeClient *client = nullptr, QObject *parent = nullptr);
 
     QVariantList commands() const { return m_commands; }
+    QVariantList slashItems() const;
     QVariantList models() const { return m_models; }
     QVariantList agents() const { return m_agents; }
     QVariantList primaryAgents() const;             // mode=="primary" && !hidden - the mode chip

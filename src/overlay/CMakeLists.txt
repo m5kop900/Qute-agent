@@ -14,12 +14,14 @@ qt_add_qml_module(qute
         InlineList.qml
         MessageText.qml
         SelectableText.qml
+        ThemedMenu.qml
         CodeHighlight.js
         ControlChip.qml
         ContextRing.qml
         PickerPopup.qml
         ConversationView.qml
         AttachmentStrip.qml
+        AttachmentChip.qml
         Theme.qml
         MenuStrip.qml
         Hint.qml

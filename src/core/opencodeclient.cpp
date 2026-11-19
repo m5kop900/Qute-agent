@@ -3,6 +3,7 @@
 #include "appconfig.h"
 #include "opencodelocator.h"
 
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QNetworkReply>
 #include <QProcessEnvironment>
@@ -42,9 +43,14 @@ QString OpenCodeClient::apiName() const
 QNetworkRequest OpenCodeClient::makeRequest(const QString &path, bool perDirectory) const
 {
     QUrl url(m_base + path);
-    if (perDirectory && !isV2() && !m_config->workDir().isEmpty()) {     // V1 selects the project with ?directory=
+    if (perDirectory && !m_config->workDir().isEmpty()) {
         QUrlQuery q(url);
-        q.addQueryItem(QStringLiteral("directory"), m_config->workDir());
+        if (!isV2()) {                                                    // V1 selects the project with ?directory=
+            q.addQueryItem(QStringLiteral("directory"), m_config->workDir());
+        } else if (path.startsWith(QLatin1String("/api/")) && !path.startsWith(QLatin1String("/api/session"))) {
+            // V2 scopes project-level lists by location. Without it /api/command returns an empty list (verified).
+            q.addQueryItem(QStringLiteral("location[directory]"), m_config->workDir());
+        }
         url.setQuery(q);
     }
     QNetworkRequest req(url);
@@ -389,6 +395,7 @@ void OpenCodeClient::listSessions()
     connect(r, &QNetworkReply::finished, this, [this, r] {
         r->deleteLater();
         if (r->error() != QNetworkReply::NoError) {
+            emit sessionsListFailed();
             emit requestFailed(tr("Listing sessions failed: %1").arg(r->errorString()));
             return;
         }
@@ -396,21 +403,48 @@ void OpenCodeClient::listSessions()
     });
 }
 
-void OpenCodeClient::runServerCommand(const QString &name, const QString &arguments)
+void OpenCodeClient::runServerCommand(const QString &name, const QString &arguments, const QVariantList &files,
+                                      const QVariantList &agents)
 {
     static const QRegularExpression namePattern(QStringLiteral("^[A-Za-z0-9_.:-]+$"));
     if (m_sessionId.isEmpty() || !namePattern.match(name).hasMatch()) {
         emit requestFailed(tr("No active session to run /%1 in.").arg(name));
         return;
     }
-    // (verify) V2 POST /api/session/{id}/command {name, text}; V1 POST /session/{id}/command.
     const QString session = m_sessionId;
-    if (isV2())
+    if (isV2()) {
+        // Verified against opencode 2: POST /api/session/{id}/command takes "command" (not "name") plus a required
+        // "text". 204 on success.
         postCommand(QStringLiteral("/api/session/%1/command").arg(session),
-                    QJsonObject{{"name", name}, {"text", arguments}}, tr("Running /%1").arg(name), {});
-    else
+                    QJsonObject{{"command", name}, {"text", arguments},
+                                {"files", toJsonFiles(files)}, {"agents", toJsonAgents(agents)},
+                                {"skills", QJsonArray()}},
+                    tr("Running /%1").arg(name), {});
+    } else {
         postCommand(QStringLiteral("/session/%1/command").arg(session),
                     QJsonObject{{"command", name}, {"arguments", arguments}}, tr("Running /%1").arg(name), {});
+    }
+}
+
+void OpenCodeClient::compactSession()
+{
+    if (m_sessionId.isEmpty()) {
+        emit requestFailed(tr("No active session to compact."));
+        return;
+    }
+    if (isV2()) {
+        // Verified against opencode 2: 200 and a "compaction" entry is queued for the session.
+        postCommand(QStringLiteral("/api/session/%1/compact").arg(m_sessionId), QJsonObject{}, tr("Compacting"), {});
+        return;
+    }
+    // V1 needs a model for the summary. Use the configured one; without it, say so instead of failing silently.
+    if (m_config->modelProvider().isEmpty() || m_config->modelId().isEmpty()) {
+        emit requestFailed(tr("Set a model in settings to compact on opencode 1."));
+        return;
+    }
+    postCommand(QStringLiteral("/session/%1/summarize").arg(m_sessionId),
+                QJsonObject{{"providerID", m_config->modelProvider()}, {"modelID", m_config->modelId()}},
+                tr("Compacting"), {});
 }
 
 void OpenCodeClient::openEventStream()
@@ -670,11 +704,18 @@ void OpenCodeClient::fetchMessages(int limit, bool updateResponseText)
         return;
     const QString path = isV2() ? QStringLiteral("/api/session/%1/message?order=desc&limit=%2").arg(m_sessionId).arg(limit)
                                 : QStringLiteral("/session/%1/message?limit=%2").arg(m_sessionId).arg(limit);
+    // The reply belongs to the session it was asked for. If the user has switched sessions meanwhile, the
+    // answer is for the session they left: applying it would show that session's messages in this one.
+    const QString requestedSession = m_sessionId;
     QNetworkReply *r = m_nam->get(makeRequest(path));
-    connect(r, &QNetworkReply::finished, this, [this, r, updateResponseText] {
+    connect(r, &QNetworkReply::finished, this, [this, r, updateResponseText, requestedSession] {
         r->deleteLater();
-        if (r->error() != QNetworkReply::NoError)
+        if (requestedSession != m_sessionId)
             return;
+        if (r->error() != QNetworkReply::NoError) {
+            emit historyFailed();
+            return;
+        }
         QJsonArray arr = extractArray(QJsonDocument::fromJson(r->readAll()));
         if (isV2()) {                                               // requested newest-first: make it oldest-first
             QJsonArray rev;
@@ -756,9 +797,18 @@ void OpenCodeClient::postPrompt(const QJsonObject &body, const QJsonObject &fall
 
 void OpenCodeClient::sendPrompt(const QString &text)
 {
+    sendPromptWithFiles(text, {}, {});
+}
+
+bool OpenCodeClient::sendPromptWithFiles(const QString &text, const QVariantList &files, const QVariantList &agents)
+{
     if (m_sessionId.isEmpty()) {
         setError(tr("Not connected to opencode yet"));
-        return;
+        return false;
+    }
+    if (!files.isEmpty() && !isV2()) {
+        emit requestFailed(tr("Attachments need opencode 2; this server is opencode 1."));
+        return false;
     }
     m_lastPrompt = text;
     m_partOrder.clear(); m_partText.clear(); m_partMessage.clear();
@@ -768,18 +818,54 @@ void OpenCodeClient::sendPrompt(const QString &text)
     m_idleMisses = 0;
     m_promptClock.start();
     m_poll.start();
-    emit promptSent(text);
+    QStringList names;
+    for (const QVariant &f : files)
+        names << f.toMap().value(QStringLiteral("name")).toString();
+    emit promptSent(text, names);
 
     if (isV2()) {
-        // Body shape (verified against opencode 2.2.6 /openapi.json): flat {"text":...}; the schema has
-        // additionalProperties:false, so {"prompt":{...}} is rejected with 400. Older builds used the nested form.
-        postPrompt(QJsonObject{{"text", text}}, QJsonObject{{"prompt", QJsonObject{{"text", text}}}});
+        // Body shape verified against opencode 2 with curl: flat {"text":...} plus optional "files" / "agents".
+        // Each file is {"uri": "file:///abs/path" or "data:<mime>;base64,...", "name": ...}. Attachments are
+        // only added when present, so a plain prompt keeps the minimal body.
+        QJsonObject body{{"text", text}};
+        if (!files.isEmpty())
+            body.insert(QStringLiteral("files"), toJsonFiles(files));
+        if (!agents.isEmpty())
+            body.insert(QStringLiteral("agents"), toJsonAgents(agents));
+        postPrompt(body, files.isEmpty() && agents.isEmpty() ? QJsonObject{{"prompt", QJsonObject{{"text", text}}}}
+                                                             : QJsonObject{});
     } else {
         QJsonObject body{{"parts", QJsonArray{QJsonObject{{"type", "text"}, {"text", text}}}}};
         if (!m_config->modelProvider().isEmpty() && !m_config->modelId().isEmpty())
             body.insert("model", QJsonObject{{"providerID", m_config->modelProvider()}, {"modelID", m_config->modelId()}});
         postPrompt(body, {});
     }
+    return true;
+}
+
+QJsonArray OpenCodeClient::toJsonAgents(const QVariantList &agents)
+{
+    QJsonArray out;
+    for (const QVariant &v : agents) {
+        const QString name = v.toMap().value(QStringLiteral("name")).toString();
+        if (!name.isEmpty())
+            out.append(QJsonObject{{"name", name}});
+    }
+    return out;
+}
+
+QJsonArray OpenCodeClient::toJsonFiles(const QVariantList &files)
+{
+    QJsonArray out;
+    for (const QVariant &v : files) {
+        const QVariantMap m = v.toMap();
+        QJsonObject f{{"uri", m.value(QStringLiteral("uri")).toString()}};
+        const QString name = m.value(QStringLiteral("name")).toString();
+        if (!name.isEmpty())
+            f.insert(QStringLiteral("name"), name);
+        out.append(f);
+    }
+    return out;
 }
 
 void OpenCodeClient::abort()
@@ -841,11 +927,21 @@ void OpenCodeClient::selectAgent(const QString &agent)
     if (!isV2() || m_sessionId.isEmpty() || agent.isEmpty())
         return;
     const QString session = m_sessionId;
-    postCommand(QStringLiteral("/api/session/%1/agent").arg(session), QJsonObject{{"agent", agent}},
-                tr("Switching the agent"), [this, session, agent] {
-                    emit serverEvent(QStringLiteral("session.agent.selected"),
-                                     QJsonObject{{"sessionID", session}, {"agent", agent}});
-                });
+    const QString path = QStringLiteral("/api/session/%1/agent").arg(session);
+    QNetworkReply *r = m_nam->post(makeRequest(path), QJsonDocument(QJsonObject{{"agent", agent}}).toJson(QJsonDocument::Compact));
+    connect(r, &QNetworkReply::finished, this, [this, r, session, agent] {
+        r->deleteLater();
+        if (r->error() == QNetworkReply::NoError) {
+            emit serverEvent(QStringLiteral("session.agent.selected"),
+                             QJsonObject{{"sessionID", session}, {"agent", agent}});
+            return;
+        }
+        // The server did not take the switch: say so, and read the session again so the menu shows the agent that
+        // is really active instead of the one we showed optimistically.
+        emit requestFailed(tr("Could not switch to %1: %2").arg(agent, r->errorString()));
+        if (session == m_sessionId)
+            fetchJson(QStringLiteral("/api/session/%1").arg(session));
+    });
 }
 
 void OpenCodeClient::selectModel(const QString &providerID, const QString &modelID, const QString &variant)

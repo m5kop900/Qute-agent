@@ -78,6 +78,27 @@ features. Removing them is an optional clean-up (see ROADMAP "M5c").
   These four paths come from the V2 docs, not from a live server yet: read `/openapi.json` and fix the parsers in
   `src/core/opencodecatalog.cpp` if a shape differs. The parsers tolerate array, `{data:[...]}` and `{providers:[...]}`.
 
+## Verified against a live OpenCode 2 server (F1, build 0.0.0-beta-19507, curl + Qt client)
+
+Checked with a real `opencode serve --port 4096` (Qt 6.8 client test `tst_live`). These replace the (verify) marks in ROADMAP F1.
+
+- **Project scope is required on V2 lists.** `GET /api/command`, `/api/fs/find`, `/api/agent`, `/api/model`, `/api/provider`
+  return data only with `?location[directory]=<project>` (the bracket syntax must be percent-encoded; `curl -g`
+  without globbing). Without it `/api/command` answers `{"location":{...},"data":[]}`. The client sends it for V2.
+- **Built-in TUI commands are not returned by `/api/command`** (only project-defined ones such as `init`, `review`, and
+  the user's `.opencode/command/*.md`). The "/" list therefore carries opencode's built-in table
+  (`src/core/slashcommands.cpp`, names and titles from the CLI binary). `compact` is performed natively.
+- **Compaction:** `POST /api/session/{id}/compact` with `{}` returns 200 and queues a `compaction` entry.
+- **Prompt body (flat):** `{"text": "...", "files": [{"uri": "file:///abs/path" | "data:<mime>;base64,...", "name": "..."}],
+  "agents": [{"name": "build"}]}`. A nested `{"prompt": {...}}` is rejected with 400 (`Missing key ["text"]`).
+  The server reads `file://` uris itself (`source.type "uri"`) and keeps inline data (`source.type "inline"`).
+  Verified by reading the stored message back.
+- **Command body:** `POST /api/session/{id}/command` takes `{"command": "<name>", "text": "...", "files": [], "agents": [], "skills": []}`
+  and answers 204. Using `name` instead of `command` is rejected with 400 (`Missing key ["command"]`).
+- **File search:** `GET /api/fs/find?query=<q>` answers `{"data":[{"path":"README.md","type":"file"}]}` (relative paths).
+- The V2 binary also lists its built-in slash commands (`slash:{name:...}` in the CLI); this table is the reference
+  for the "/" list when opencode adds commands.
+
 ## Connection failures are reported, not retried silently
 `OpenCodeClient::notRunning()` distinguishes the cases where waiting can never help and sets `lastError`
 (with a `Settings` button in the overlay, `OverlayController::runSettings()`):

@@ -23,20 +23,16 @@ TextEdit {
         }
     }
 
-    Menu {
+    ThemedMenu {
         id: menu
-        parent: root
-        MenuItem {
-            text: qsTr("Copy")
-            onTriggered: {
+        theme: root.theme
+        actions: [
+            {text: qsTr("Copy"), enabled: true, run: function () {
                 if (root.selectedText.length === 0)
                     root.selectAll()
                 root.copy()
-            }
-        }
-        MenuItem {
-            text: qsTr("Select all")
-            onTriggered: root.selectAll()
-        }
+            }},
+            {text: qsTr("Select all"), enabled: true, run: function () { root.selectAll() }}
+        ]
     }
 }

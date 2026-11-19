@@ -54,8 +54,8 @@ Item {
             Column {
                 anchors.left: parent.left
                 anchors.leftMargin: Math.round(8 * root.s)
-                anchors.right: check.left
-                anchors.rightMargin: Math.round(6 * root.s)
+                anchors.right: parent.right
+                anchors.rightMargin: Math.round(72 * root.s)
                 anchors.verticalCenter: parent.verticalCenter
 
                 Label {
@@ -73,6 +73,18 @@ Item {
                     font.pixelSize: Math.round(8.5 * root.s)
                     elide: Text.ElideRight
                 }
+            }
+            // Small tag: "QUTE" = Qute's own command, "TUI" = runs only in the opencode TUI, "AGENT" = agent.
+            Label {
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.rightMargin: Math.round(24 * root.s)
+                visible: text !== ""
+                text: row.modelData.tag !== undefined ? String(row.modelData.tag) : ""
+                color: root.theme.textDim
+                font.pixelSize: Math.round(8 * root.s)
+                font.bold: true
+                font.letterSpacing: Math.round(0.6 * root.s)
             }
             Label {
                 id: check

@@ -3,6 +3,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QString>
+#include <QStringList>
 
 // Ordered conversation items for the overlay (F0.1). Pure projection: it knows NOTHING about
 // networking, QML or the sprite state - events and the projected message list are handed in.
@@ -13,6 +14,7 @@
 //   reasoning       - the model's reasoning / thinking text (collapsible in QML)
 //   tool            - one tool call (name + status + short input summary)
 //   request         - a permission request or a question form waiting for the user
+//   compaction      - the summary the server wrote when the session was compacted (collapsible in QML)
 //   notice          - errors, compaction status' etc.
 //
 // Two sources, one shape: live events (session.text.*, session.tool.*, message.part.* ...) and the
@@ -31,6 +33,7 @@ public:
         RequestKindRole,    // permission|form
         DetailRole,         // short input/output summary, tooltip text
         StreamingRole,      // text is still arriving
+        AttachmentsRole,    // user prompts: names of the files sent with them (list of strings)
     };
 
     struct Item {
@@ -42,6 +45,7 @@ public:
         QString requestKind;
         QString detail;
         bool streaming = false;
+        QStringList attachments;   // user prompts: file names sent with the prompt
     };
 
     explicit ConversationModel(QObject *parent = nullptr);
@@ -55,12 +59,14 @@ public:
     // Feed one bus event (V1 or V2). `properties` is the event payload (already unwrapped).
     void applyEvent(const QString &type, const QJsonObject &properties);
     // The user sent this prompt right now (before the server echoes it back).
-    void applyUserPrompt(const QString &text);
+    void applyUserPrompt(const QString &text, const QStringList &attachmentNames = {});
     // Replace the timeline with the server's projected messages, oldest first.
     // Pending permission/form requests are preserved because the projection does not contain them.
     void applyMessages(const QJsonArray &messagesAscending);
     Q_INVOKABLE void clear();
     Q_INVOKABLE void addNotice(const QString &text);   // local feedback (slash commands, errors)
+    // Text of the newest assistant answer (for /copy). Empty when there is none.
+    Q_INVOKABLE QString lastAssistantText() const;
 
 signals:
     void countChanged();

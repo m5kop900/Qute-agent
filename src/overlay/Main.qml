@@ -24,7 +24,7 @@ Window {
     // limit for dragging the overlay up. Clicks below the card pass through (see updateInputRegion).
     readonly property int baseLevel: {
         if (client.responseText.length > 500 || conversation.count > 4) return 2
-        if (client.responseText.length > 0 || busy || conversation.count > 0) return 1
+        if (client.responseText.length > 0 || busy || conversation.count > 0 || store.loadingHistory) return 1
         if (!client.connected && client.lastError !== "") return 1
         return 0
     }
@@ -39,15 +39,18 @@ Window {
     readonly property var panelHeights: [140, 250, 430]
     // Empty room kept inside the window below the card: the menu strip dropdowns open into it.
     readonly property int dropRoom: Math.round(200 * s)
+    // Extra card height while files, pasted images or @mentions wait for the next prompt: the strip needs its own
+    // row, otherwise the chips are squeezed out of the card (the conversation takes what is left).
+    readonly property int attachExtra: attachments.count > 0 ? Math.round(56 * s) : 0
     // Requested card geometry in window coordinates. The card's bottom edge is the prompt box;
     // contentHeight/dropRoom are read by the C++ platform shell, which resizes and moves the window
     // (the compositor must do it: a client-side resize is center-anchored and would shift the card).
     readonly property real contentTop: Math.round(10 * s)
-    readonly property int contentHeight: Math.round(contentTop + panelHeights[desiredLevel] * s)
+    readonly property int contentHeight: Math.round(contentTop + panelHeights[desiredLevel] * s) + attachExtra
     // The card grows upward from cardBottom. Until the window has been resized, never draw it taller
     // than the window can show, so nothing is ever clipped at the top.
     readonly property real cardBottom: win.height - dropRoom
-    readonly property int cardHeight: Math.min(Math.round(panelHeights[desiredLevel] * s),
+    readonly property int cardHeight: Math.min(Math.round(panelHeights[desiredLevel] * s) + attachExtra,
                                                Math.max(0, Math.round(cardBottom - contentTop)))
 
     width: Math.round(560 * s)
@@ -71,6 +74,15 @@ Window {
             top = Math.min(top, Math.floor(stripY + menuStrip.openPopupTop - Math.round(12 * win.s)))
             bottom = Math.max(bottom, Math.ceil(stripY + menuStrip.openPopupBottom + Math.round(12 * win.s)))
         }
+        if (composer.listOpen) {
+            // The "/", "@", /sessions, /agents, /models and file lists hang below the prompt box, in the drop room.
+            // They must take clicks too, or the desktop under the room gets them.
+            const boxY = composer.mapToItem(win.contentItem, 0, 0).y
+            const listTop = boxY + composer.listTop
+            const listBottom = listTop + composer.listPixelHeight + Math.round(6 * win.s)
+            top = Math.min(top, Math.floor(listTop))
+            bottom = Math.max(bottom, Math.ceil(listBottom))
+        }
         top = Math.max(0, Math.round(top))
         bottom = Math.min(Math.round(bottom), win.height)
         controller.setInputRegion(0, top, win.width, bottom - top)
@@ -86,6 +98,12 @@ Window {
     }
 
     Connections {
+        target: composer
+        function onListOpenChanged() { win.updateInputRegion() }
+        function onListPixelHeightChanged() { win.updateInputRegion() }
+    }
+
+    Connections {
         target: controller
         function onShown() {
             win.updateInputRegion()
@@ -96,6 +114,16 @@ Window {
     // Escape closes an open dropdown first; only when none is open does it hide the overlay.
     // Esc closes the open menu or list first; the overlay only hides when nothing is open.
     Shortcut { sequence: "Escape"; enabled: !menuStrip.popupOpen && !composer.listOpen; onActivated: controller.hide() }
+
+    // Shift+Tab switches the agent mode (build <-> plan). A window shortcut, so it works wherever the focus is;
+    // the prompt box also handles it, but only while it has the keyboard.
+    Shortcut {
+        sequences: ["Shift+Tab", "Backtab"]
+        onActivated: {
+            console.log("qute-debug: Shift+Tab reached the window shortcut")
+            win.cycleAgent()
+        }
+    }
 
     Item {
         anchors.fill: parent
@@ -274,10 +302,11 @@ Window {
                     }
                 }
 
-                AttachmentStrip {                 // F1 fills this; empty for now
+                AttachmentStrip {                 // files, pasted images and @mentions waiting for the next prompt (F1)
                     Layout.fillWidth: true
                     theme: appTheme
                     s: win.s
+                    model: attachments
                 }
 
                 Composer {
@@ -285,12 +314,16 @@ Window {
                     Layout.fillWidth: true
                     theme: appTheme
                     s: win.s
+                    tools: composerTools
+                    files: attachments
                     enabled: client.connected
                     offText: client.lastError !== "" ? qsTr("opencode is not available") : qsTr("Connecting to opencode…")
-                    onSubmitted: function (text) { chat.followEnd(); client.sendPrompt(text) }
+                    onSubmitted: function (text) { chat.followEnd(); win.sendPrompt(text) }
                     onCommand: function (text) { win.runCommand(text) }
                     onModeCycleRequested: win.cycleAgent()
-                    commandItems: win.slashItems
+                    commandItems: catalog.slashItems
+                    mentionItems: win.mentionItems
+                    onMentionQueryChanged: function (query) { win.mentionQuery = query; catalog.searchFiles(query) }
                     currentSessionKey: client.sessionId
                     listMaxHeight: win.dropRoom - Math.round(16 * win.s)
                     onListPicked: function (kind, key) { win.onListPicked(kind, key) }
@@ -339,55 +372,155 @@ Window {
         NumberAnimation { target: sprite; property: "scale"; to: 1; duration: 120; easing.type: Easing.InOutQuad }
     }
 
-    // Slash commands offered by the "/" list: the local ones first, then the server's own commands.
-    readonly property var slashItems: {
-        const out = [
-            {key: "new", label: "/new", sub: qsTr("Start a new session")},
-            {key: "session", label: "/session", sub: qsTr("Switch between sessions")},
-            {key: "openinopencode", label: "/openinopencode", sub: qsTr("Open this session in the opencode TUI")},
-            {key: "directory", label: "/directory", sub: qsTr("Set the project folder (starts a new session)")}
-        ]
-        const cmds = catalog.commands
-        for (let i = 0; i < cmds.length; ++i) {
-            const name = String(cmds[i].name)
-            if (name === "" || out.some(function (x) { return x.key === name }))
-                continue
-            out.push({key: name, label: "/" + name, sub: cmds[i].description ? String(cmds[i].description) : ""})
+    // "@" list: files from GET /api/fs/find (catalog.files) and the primary agents whose id matches the query.
+    property string mentionQuery: ""
+    readonly property var mentionItems: {
+        const q = mentionQuery.toLowerCase()
+        const out = []
+        const agents = catalog.primaryAgents
+        for (let i = 0; i < agents.length && out.length < 40; ++i) {
+            const id = String(agents[i].id)
+            if (id.toLowerCase().indexOf(q) >= 0)
+                out.push({key: id, label: "@" + id, sub: qsTr("Agent"), tag: "AGENT", kind: "agent"})
+        }
+        const files = catalog.files
+        for (let i = 0; i < files.length && out.length < 40; ++i) {
+            const path = String(files[i].path)
+            out.push({key: path, label: "@" + path, sub: qsTr("File"), tag: "", kind: "file"})
         }
         return out
     }
 
-    function isServerCommand(name) {
-        const cmds = catalog.commands
-        for (let i = 0; i < cmds.length; ++i)
-            if (String(cmds[i].name) === name)
-                return true
-        return false
+    // Agents named in the text ("@build") are sent with the prompt in the agents field.
+    function mentionedAgentNames(text) {
+        const names = []
+        const agents = catalog.primaryAgents
+        for (let i = 0; i < agents.length; ++i) {
+            const id = String(agents[i].id)
+            const re = new RegExp("(^|\\s)@" + id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(\\s|$)")
+            if (re.test(text))
+                names.push(id)
+        }
+        return names
     }
+
+    // Sends a prompt with the attachments. The list is cleared only when the client accepted the prompt, so a
+    // failed send keeps the files for the next try.
+    function sendPrompt(text) {
+        const names = mentionedAgentNames(text)
+        if (client.sendPromptWithFiles(text, attachments.promptFiles(), attachments.agentRefs(names)))
+            attachments.clear()
+    }
+
+    // Items for the /agents and /models pickers, built from the catalog (same shape as the other lists).
+    function agentItems() {
+        const out = []
+        const agents = catalog.primaryAgents
+        for (let i = 0; i < agents.length; ++i) {
+            const id = String(agents[i].id)
+            out.push({key: id, label: id, sub: qsTr("Agent"), tag: "", kind: "agent"})
+        }
+        return out
+    }
+
+    function modelItems() {
+        const out = []
+        const models = catalog.models
+        for (let i = 0; i < models.length; ++i) {
+            const m = models[i]
+            const name = String(m.name || m.modelID || m.id)
+            out.push({key: String(m.id), label: name, sub: String(m.providerID || ""), tag: "", kind: "model"})
+        }
+        return out
+    }
+
+    function pickAgent(id) {
+        if (!client.connected) {
+            conversation.addNotice(qsTr("Agent mode can be changed once opencode is connected."))
+            return
+        }
+        if (store.busy) {
+            conversation.addNotice(qsTr("Wait for the current answer before changing the agent mode."))
+            return
+        }
+        store.selectAgent(id)
+        conversation.addNotice(qsTr("Agent: %1").arg(id))
+    }
+
+    function pickModel(key) {
+        if (store.busy) {
+            conversation.addNotice(qsTr("Wait for the current answer before changing the model."))
+            return
+        }
+        const models = catalog.models
+        for (let i = 0; i < models.length; ++i) {
+            const m = models[i]
+            if (String(m.id) === key) {
+                store.selectModel(String(m.providerID), String(m.modelID), "")
+                conversation.addNotice(qsTr("Model: %1").arg(String(m.name || m.modelID)))
+                return
+            }
+        }
+        conversation.addNotice(qsTr("Unknown model: %1").arg(key))
+    }
+
+    // One line for /status: what the next prompt will use.
+    function statusLine() {
+        const parts = []
+        parts.push(qsTr("Agent: %1").arg(store.activeAgent !== "" ? store.activeAgent : "build"))
+        parts.push(qsTr("Model: %1").arg(store.activeModel !== "" ? store.activeModel : qsTr("default")))
+        if (store.contextPercent >= 0)
+            parts.push(qsTr("Context: %1%").arg(store.contextPercent))
+        parts.push(qsTr("Folder: %1").arg(store.sessionDirectory !== "" ? store.sessionDirectory : config.workDir))
+        return parts.join("  ·  ")
+    }
+
+    // Clipboard for /copy: a hidden TextEdit does the copy, which needs no focus.
+    TextEdit { id: clipHelper; visible: false }
 
     function onListPicked(kind, key) {
         if (kind === "sessions") {
             client.switchSession(key)
+        } else if (kind === "attach") {
+            const err = attachments.addFile(key)
+            if (err !== "")
+                conversation.addNotice(err)
+        } else if (kind === "agents") {
+            win.pickAgent(key)
+        } else if (kind === "models") {
+            win.pickModel(key)
         } else if (kind === "commands") {
             if (key === "directory")
                 composer.setText("/directory ")     // needs a path: let the user type it
             else
                 win.runCommand("/" + key)
+        } else if (kind === "file") {
+            const err = attachments.addMention(key, store.sessionDirectory || config.workDir)
+            if (err !== "")
+                conversation.addNotice(err)
         }
+        // "agent": the "@name" text is already in the prompt; the agent is sent with it (mentionedAgentNames).
     }
 
     Connections {
         target: client
         function onSessionsListed(items) {
-            if (items.length === 0)
+            if (items.length === 0) {
+                composer.closeList()
                 conversation.addNotice(qsTr("No sessions yet."))
-            else
+            } else {
                 composer.openSessions(items, client.sessionId)
+            }
+        }
+        function onSessionsListFailed() {
+            if (composer.listKind === "sessions")
+                composer.closeList()
         }
         function onRequestFailed(message) { conversation.addNotice(message) }
     }
 
-    // Shift+Tab: switch to the next primary agent (mode). The cycle itself lives in SessionStore.
+    // Shift+Tab: switch to the next primary agent (mode). The cycle itself lives in SessionStore. Every press
+    // answers with a notice, so a press that cannot switch says why instead of doing nothing.
     function cycleAgent() {
         if (!client.connected) {
             conversation.addNotice(qsTr("Agent mode can be changed once opencode is connected."))
@@ -397,15 +530,36 @@ Window {
             conversation.addNotice(qsTr("Wait for the current answer before changing the agent mode."))
             return
         }
-        store.cycleAgent()
+        const next = store.cycleAgent()
+        console.log("qute-debug: cycleAgent ->", "'" + next + "'", "busy=" + store.busy, "agent=" + store.activeAgent)
+        if (next === "")
+            conversation.addNotice(catalog.primaryAgents.length === 0 ? qsTr("Agents are still loading.")
+                                                                       : qsTr("Only one agent is available."))
+        else
+            conversation.addNotice(qsTr("Agent: %1").arg(next))
     }
 
-    // Slash commands typed in the prompt box. They run in Qute, not on the server.
+    // Slash commands. Qute's own and opencode's built-ins that Qute can perform run here; "native" ones use the
+    // API (for example /compact); "TUI" ones are only in the opencode TUI and say so; project commands ("server")
+    // are sent to the session.
     function runCommand(line) {
         const m = /^\/(\S+)\s*(.*)$/.exec(line)
-        const name = m ? m[1] : ""
+        const typed = m ? m[1] : ""
         const arg = m ? m[2].trim() : ""
-        if (name === "directory") {
+        const name = composerTools.canonicalCommand(typed)
+        let item = null
+        const items = catalog.slashItems
+        for (let i = 0; i < items.length; ++i) {
+            if (String(items[i].key) === name) {
+                item = items[i]
+                break
+            }
+        }
+        if (item === null) {
+            conversation.addNotice(qsTr("Unknown command: /%1").arg(typed))
+            return
+        }
+        if (name === "directory" || name === "cd") {
             if (arg === "") {
                 conversation.addNotice(qsTr("Working directory: %1").arg(config.workDir))
                 return
@@ -420,21 +574,52 @@ Window {
             client.newSession()
             conversation.addNotice(qsTr("New session in %1").arg(config.workDir))
         } else if (name === "new") {
-            // A brand-new session. The view is cleared by the session.switched event, so the window shrinks back
-            // to the prompt-only size on its own, the same as on first launch.
+            // The view is cleared by the session.switched event, so the window shrinks back on its own.
             client.newSession()
-        } else if (name === "session") {
+        } else if (name === "sessions") {
+            // The picker opens at once with a loading row; the list replaces it when the server answers.
+            composer.openList("sessions", [{key: "", label: qsTr("Loading sessions…"), sub: "", tag: "", kind: "loading"}],
+                              client.sessionId)
             client.listSessions()
+        } else if (name === "compact") {
+            client.compactSession()
         } else if (name === "openinopencode") {
             const err = controller.openInOpencode(client.sessionId, store.sessionDirectory)
             if (err !== "")
                 conversation.addNotice(err)
             else
                 controller.hide()
-        } else if (win.isServerCommand(name)) {
-            client.runServerCommand(name, arg)
+        } else if (name === "agents") {
+            if (!client.connected) {
+                conversation.addNotice(qsTr("Agent mode can be changed once opencode is connected."))
+                return
+            }
+            composer.openList("agents", win.agentItems(), store.activeAgent)
+        } else if (name === "models") {
+            composer.openList("models", win.modelItems(), store.activeModelProvider !== "" ? store.activeModelProvider + "/" + store.activeModelId : "")
+        } else if (name === "status") {
+            conversation.addNotice(win.statusLine())
+        } else if (name === "copy") {
+            const last = conversation.lastAssistantText()
+            if (last === "") {
+                conversation.addNotice(qsTr("Nothing to copy yet."))
+            } else {
+                clipHelper.text = last
+                clipHelper.selectAll()
+                clipHelper.copy()
+                conversation.addNotice(qsTr("Copied the last answer."))
+            }
+        } else if (name === "settings") {
+            controller.runSettings()
+        } else if (name === "exit") {
+            controller.hide()
+        } else if (name === "help") {
+            conversation.addNotice(qsTr("Type / to see the commands: /agents, /models, /sessions, /new, /compact, /copy, /status, /directory. /openinopencode opens this session in the opencode TUI. Attach files with +, drag them in, or type @ to mention a file or agent."))
+        } else if (item.kind === "server") {
+            client.runServerCommand(name, arg, attachments.promptFiles(), attachments.agentRefs(win.mentionedAgentNames(arg)))
+            attachments.clear()
         } else {
-            conversation.addNotice(qsTr("Unknown command: /%1").arg(name))
+            conversation.addNotice(qsTr("Unknown command: /%1").arg(typed))
         }
     }
 

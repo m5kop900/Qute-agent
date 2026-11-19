@@ -1,5 +1,6 @@
 #include "conversationmodel.h"
 
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QSet>
 
@@ -47,6 +48,7 @@ QVariant ConversationModel::data(const QModelIndex &index, int role) const
     case RequestKindRole: return it.requestKind;
     case DetailRole:      return it.detail;
     case StreamingRole:   return it.streaming;
+    case AttachmentsRole: return it.attachments;
     default:              return {};
     }
 }
@@ -57,6 +59,7 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
         {KindRole, "kind"},           {IdRole, "id"},               {TextRole, "text"},
         {NameRole, "name"},           {StatusRole, "status"},       {RequestKindRole, "requestKind"},
         {DetailRole, "detail"},       {StreamingRole, "streaming"},
+        {AttachmentsRole, "attachments"},
     };
 }
 
@@ -221,15 +224,24 @@ void ConversationModel::addNotice(const QString &text)
     appendNotice(text);
 }
 
-void ConversationModel::applyUserPrompt(const QString &text)
+void ConversationModel::applyUserPrompt(const QString &text, const QStringList &attachmentNames)
 {
-    if (text.isEmpty())
+    if (text.isEmpty() && attachmentNames.isEmpty())
         return;
     Item it;
     it.kind = QStringLiteral("user");
     it.id = QStringLiteral("user:local-%1").arg(++m_userPromptSeq);
     it.text = text;
+    it.attachments = attachmentNames;
     upsert(it);
+}
+
+QString ConversationModel::lastAssistantText() const
+{
+    for (int i = m_items.size() - 1; i >= 0; --i)
+        if (m_items.at(i).kind == QLatin1String("assistant-text") && !m_items.at(i).text.trimmed().isEmpty())
+            return m_items.at(i).text;
+    return {};
 }
 
 void ConversationModel::clear()
@@ -490,8 +502,31 @@ void ConversationModel::applyMessages(const QJsonArray &asc)
                 }
                 text = loose.join(QStringLiteral("\n\n")).trimmed();
             }
-            if (!text.isEmpty())
-                out << Item{QStringLiteral("user"), QStringLiteral("user:%1").arg(msgId), text, {}, {}, {}, {}, false};
+            // Files the server kept with the prompt (file parts) are shown under the bubble too.
+            QStringList files;
+            for (const QJsonValue &pv : parts) {
+                const QJsonObject p = pv.toObject();
+                if (p.value("type").toString() != QLatin1String("file"))
+                    continue;
+                QString fname = firstString(p, {"filename", "name"});
+                if (fname.isEmpty())
+                    fname = QFileInfo(firstString(p, {"path", "uri", "url"})).fileName();
+                if (!fname.isEmpty())
+                    files << fname;
+            }
+            if (!text.isEmpty() || !files.isEmpty()) {
+                Item it{QStringLiteral("user"), QStringLiteral("user:%1").arg(msgId), text, {}, {}, {}, {}, false};
+                it.attachments = files;
+                out << it;
+            }
+        } else if (role == QLatin1String("compaction")) {
+            // A compaction entry that is a whole message: its summary is the text.
+            QString summary = firstString(message, {"summary", "text"});
+            if (summary.isEmpty())
+                summary = textOfParts(parts);
+            if (!summary.isEmpty())
+                out << Item{QStringLiteral("compaction"), QStringLiteral("compaction:%1").arg(msgId), summary,
+                            {}, QStringLiteral("ok"), {}, {}, false};
         } else if (role == QLatin1String("assistant")) {
             int ordinal = 0;
             for (const QJsonValue &pv : parts) {
@@ -510,6 +545,12 @@ void ConversationModel::applyMessages(const QJsonArray &asc)
                     if (!t.isEmpty())
                         out << Item{QStringLiteral("reasoning"), QStringLiteral("reason:%1").arg(key), t,
                                     {}, {}, {}, {}, false};
+                } else if (pt == QLatin1String("compaction")) {
+                    // A compaction part inside an assistant message: same card as a compaction message.
+                    const QString summary = firstString(part, {"summary", "text", "content"});
+                    if (!summary.isEmpty())
+                        out << Item{QStringLiteral("compaction"), QStringLiteral("compaction:%1").arg(key), summary,
+                                    {}, QStringLiteral("ok"), {}, {}, false};
                 } else if (pt == QLatin1String("tool")) {
                     const QString toolId = firstString(part, {"id", "callID", "toolCallID"});
                     const QString name = firstString(part, {"name", "tool"});
@@ -545,6 +586,8 @@ void ConversationModel::applyMessages(const QJsonArray &asc)
                     && !claimedRows.contains(serverRow)) {
                     claimedRows.insert(serverRow);
                     serverItem.id = lu.id;
+                    if (serverItem.attachments.isEmpty())   // keep the names we sent if the server shows none
+                        serverItem.attachments = lu.attachments;
                     echoed = true;
                     break;
                 }

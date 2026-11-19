@@ -73,6 +73,16 @@ private slots:
         QVERIFY(agentPosts().last().contains(QStringLiteral("\"agent\":\"build\"")));
         QCOMPARE(store.activeAgent(), QStringLiteral("build"));
     }
+    // QML can only call methods that the meta-object knows: Q_INVOKABLE. Shift+Tab, the menu chips and /agents
+    // call these, so a missing Q_INVOKABLE made them silently do nothing.
+    void qmlCanCallAgentAndModelSwitches()
+    {
+        const QMetaObject *mo = &SessionStore::staticMetaObject;
+        QVERIFY(mo->indexOfMethod("cycleAgent()") >= 0);
+        QVERIFY(mo->indexOfMethod("selectAgent(QString)") >= 0);
+        QVERIFY(mo->indexOfMethod("selectModel(QString,QString,QString)") >= 0);
+    }
+
 };
 
 QTEST_MAIN(TstModes)

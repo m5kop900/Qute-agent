@@ -19,6 +19,7 @@ class SessionStore : public QObject {
     Q_OBJECT
     Q_PROPERTY(ConversationModel *conversation READ conversation CONSTANT)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
+    Q_PROPERTY(bool loadingHistory READ loadingHistory NOTIFY loadingHistoryChanged)   // a session is being loaded
     Q_PROPERTY(QString sessionId READ sessionId NOTIFY sessionChanged)
     Q_PROPERTY(QString workDir READ workDir NOTIFY workDirChanged)
     // The folder the CURRENT session runs in, as the server reports it (may differ from the config folder).
@@ -40,6 +41,7 @@ public:
 
     ConversationModel *conversation() const { return m_conversation; }
     bool busy() const { return m_busy; }
+    bool loadingHistory() const { return m_loadingHistory; }
     QString sessionId() const;
     QString workDir() const { return m_workDir; }
     QString sessionDirectory() const { return m_sessionDirectory; }
@@ -66,16 +68,20 @@ public:
 public slots:
     void onEvent(const QString &type, const QJsonObject &properties);
     void onMessages(const QJsonArray &messagesAscending);
-    void onPromptSent(const QString &text);
+    void onPromptSent(const QString &text, const QStringList &attachmentNames = {});
     void onConnectedChanged(bool connected);
     // Selections go through the server; the local state is updated optimistically so the chip reacts at once.
-    void selectAgent(const QString &agent);
-    // Shift+Tab: switch to the next primary agent (mode) the server offers.
-    void cycleAgent();
-    void selectModel(const QString &providerID, const QString &modelID, const QString &variant);
+    // Q_INVOKABLE: the QML (menu strip, Shift+Tab, /agents, /models) calls these. Without it the call fails in
+    // QML silently, which is why Shift+Tab did nothing.
+    Q_INVOKABLE void selectAgent(const QString &agent);
+    // Shift+Tab: switch to the next primary agent (mode) the server offers. Returns the agent chosen, or "" when
+    // there is nothing to switch to.
+    Q_INVOKABLE QString cycleAgent();
+    Q_INVOKABLE void selectModel(const QString &providerID, const QString &modelID, const QString &variant);
 
 signals:
     void busyChanged();
+    void loadingHistoryChanged();
     void sessionChanged();
     void workDirChanged();
     void sessionDirectoryChanged();
@@ -86,6 +92,8 @@ signals:
 
 private:
     void setBusy(bool busy);
+    void setLoadingHistory(bool loading);
+    bool m_loadingHistory = false;
     void setActiveAgent(const QString &agent);
     void setActiveModel(const QString &providerID, const QString &modelID, const QString &variant);
     void setContextTokens(qint64 tokens);

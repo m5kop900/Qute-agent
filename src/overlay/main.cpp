@@ -7,6 +7,8 @@
 #include "appconfig.h"
 #include "conversationmodel.h"
 #include "opencodecatalog.h"
+#include "attachmentmodel.h"
+#include "composertokens.h"
 #include "opencodeclient.h"
 #include "overlaycontroller.h"
 #include "platformshell.h"
@@ -106,6 +108,10 @@ int main(int argc, char *argv[])
     ctx->setContextProperty(QStringLiteral("store"), &store);
     ctx->setContextProperty(QStringLiteral("conversation"), store.conversation());
     ctx->setContextProperty(QStringLiteral("catalog"), &catalog);
+    AttachmentModel attachments(&config);       // the prompt box's pending files (F1)
+    ctx->setContextProperty(QStringLiteral("attachments"), &attachments);
+    ComposerTools composerTools;                // "@" detection and "/" filtering for the prompt box (F1.3, F1.4)
+    ctx->setContextProperty(QStringLiteral("composerTools"), &composerTools);
 
     PlatformShell *shell = PlatformShell::create(&app);
     auto *controller = new OverlayController(shell, &config, &app);   // window is attached after load

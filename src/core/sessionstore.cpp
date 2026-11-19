@@ -86,6 +86,7 @@ SessionStore::SessionStore(OpenCodeClient *client, AppConfig *config, OpenCodeCa
     if (m_client) {
         connect(m_client, &OpenCodeClient::serverEvent, this, &SessionStore::onEvent);
         connect(m_client, &OpenCodeClient::messageHistoryReceived, this, &SessionStore::onMessages);
+        connect(m_client, &OpenCodeClient::historyFailed, this, [this] { setLoadingHistory(false); });
         connect(m_client, &OpenCodeClient::promptSent, this, &SessionStore::onPromptSent);
         connect(m_client, &OpenCodeClient::connectedChanged, this, &SessionStore::onConnectedChanged);
         connect(m_client, &OpenCodeClient::sessionChanged, this, &SessionStore::sessionChanged);
@@ -215,10 +216,10 @@ void SessionStore::adoptDefaultModel()
     setActiveModel(model.value("providerID").toString(), model.value("modelID").toString(), QString());
 }
 
-void SessionStore::onPromptSent(const QString &text)
+void SessionStore::onPromptSent(const QString &text, const QStringList &attachmentNames)
 {
     setBusy(true);
-    m_conversation->applyUserPrompt(text);
+    m_conversation->applyUserPrompt(text, attachmentNames);
 }
 
 void SessionStore::onConnectedChanged(bool connected)
@@ -258,16 +259,17 @@ QString SessionStore::nextAgent(const QString &current, const QStringList &ids)
     return ids.at((idx + 1) % ids.size());
 }
 
-void SessionStore::cycleAgent()
+QString SessionStore::cycleAgent()
 {
     if (!m_catalog)
-        return;
+        return {};
     QStringList ids;
     for (const QVariant &v : m_catalog->primaryAgents())
         ids << v.toMap().value(QStringLiteral("id")).toString();
     const QString next = nextAgent(m_activeAgent, ids);
     if (!next.isEmpty())
         selectAgent(next);
+    return next;
 }
 
 void SessionStore::selectModel(const QString &providerID, const QString &modelID, const QString &variant)
@@ -296,6 +298,7 @@ void SessionStore::onEvent(const QString &type, const QJsonObject &p)
         setContextTokens(0);
         const QString sid = p.value(QStringLiteral("sessionID")).toString();
         if (m_client && !sid.isEmpty()) {
+            setLoadingHistory(true);
             m_client->requestMessageHistory();
             if (m_client->isV2Server())
                 m_client->fetchJson(QStringLiteral("/api/session/%1").arg(sid));
@@ -303,6 +306,10 @@ void SessionStore::onEvent(const QString &type, const QJsonObject &p)
         return;
     }
     m_conversation->applyEvent(type, p);
+
+    // The compaction summary is written by the server: reload the history so it shows up as its own entry.
+    if (type == QLatin1String("session.compaction.ended") && m_client)
+        m_client->requestMessageHistory();
 
     if (type == QLatin1String("server.connected")) {
         if (m_client) {
@@ -455,6 +462,15 @@ void SessionStore::deriveFromMessages(const QJsonArray &asc)
 
 void SessionStore::onMessages(const QJsonArray &messagesAscending)
 {
+    setLoadingHistory(false);
     m_conversation->applyMessages(messagesAscending);
     deriveFromMessages(messagesAscending);
+}
+
+void SessionStore::setLoadingHistory(bool loading)
+{
+    if (m_loadingHistory == loading)
+        return;
+    m_loadingHistory = loading;
+    emit loadingHistoryChanged();
 }

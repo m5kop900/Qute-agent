@@ -50,6 +50,10 @@ public:
 
     Q_INVOKABLE void start();
     Q_INVOKABLE void sendPrompt(const QString &text);
+    // Sends text plus attachments ({uri, name} entries, see AttachmentModel::promptFiles). Returns false when the
+    // prompt was not sent (no session, or attachments on a V1 server); the reason is shown via requestFailed.
+    // agents: names of agents mentioned with "@name" ([{name}] in the body).
+    Q_INVOKABLE bool sendPromptWithFiles(const QString &text, const QVariantList &files, const QVariantList &agents);
     Q_INVOKABLE void abort();
     Q_INVOKABLE void answerPermission(const QString &permissionId, const QString &response); // once|always|reject
     Q_INVOKABLE void cancelForm(const QString &formId);   // OpenCode 2: dismiss a question the agent asked
@@ -62,7 +66,10 @@ public:
     Q_INVOKABLE void listSessions();
     Q_INVOKABLE void switchSession(const QString &id);
     // Slash commands defined on the server (GET /api/command): run in the current session with optional arguments.
-    Q_INVOKABLE void runServerCommand(const QString &name, const QString &arguments);
+    Q_INVOKABLE void runServerCommand(const QString &name, const QString &arguments, const QVariantList &files,
+                                      const QVariantList &agents);
+    // The native /compact: POST /api/session/{id}/compact (V2). Shows up as a compaction entry in the conversation.
+    Q_INVOKABLE void compactSession();
     static QVariantList parseSessions(const QJsonDocument &document);
     // Ask for the projected message history (oldest first). SessionStore uses this to reconcile.
     Q_INVOKABLE void requestMessageHistory(int limit = 100);
@@ -81,17 +88,23 @@ signals:
     void sessionChanged();
     void lastErrorChanged();
     void opencodeMissingChanged();
-    void promptSent(const QString &text);
+    void promptSent(const QString &text, const QStringList &attachmentNames);
     // Every bus event for OUR session (unwrapped to type + properties), plus synthetic "session.status idle".
     void serverEvent(const QString &type, const QJsonObject &properties);
     // Projected message list (oldest first), fetched after a turn / on (re)connect.
     void messageHistoryReceived(const QJsonArray &messages);
+    // The history request for the current session failed (so a loading state can end).
+    void historyFailed();
+    // The session list request failed (so the picker shown while it loads can close).
+    void sessionsListFailed();
     // Result of fetchJson() for the catalog service. status is the HTTP status code (0 = network error).
     void jsonFetched(const QString &path, const QJsonDocument &document, int status);
 
 private:
     bool isV2() const { return m_api == Api::V2; }
     QNetworkRequest makeRequest(const QString &path, bool perDirectory = true) const;
+    static QJsonArray toJsonFiles(const QVariantList &files);
+    static QJsonArray toJsonAgents(const QVariantList &agents);
     void checkHealth();
     void probeV2Info();
     void apiDecided(const QString &version);
