@@ -23,6 +23,7 @@ mypack/
 }
 ```
 - Sheet = ONE horizontal row of `frames` frames, each `frame.width × frame.height`, transparent PNG.
+  The overlay loads the whole sheet as one texture (it slides it behind a clip window, it does not re-crop per frame), so keep `frames × frame.width` within the GPU texture limit (4096 px is safe everywhere; 16384 on modern GPUs).
 - State names: `offline idle thinking working waiting done error`. Missing states follow `fallback` (max 5 hops, then `idle`).
 - `{variant}` in `file` is replaced by the selected variant; if the variant is unknown the first one is used.
 - Color variants are pre-rendered files (hue-shifted). Keep the sprite readable on light AND dark backgrounds.

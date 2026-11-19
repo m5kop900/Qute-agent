@@ -323,8 +323,8 @@ Depends on: nothing hard (F2.4 ring should follow the mascot style). **Audit:** 
 - *Tests:* none visual; check that `shown` -> input focus happens in the same event loop turn. *Live:* 20 rapid toggles, no stuck/partial state.
 
 ### F6.2 Animation improvements
-- [ ] Smooth state transitions: cross-fade between two `AnimatedSprite` layers (80-150 ms), short minimum dwell/hysteresis so fast flapping (thinking/working/thinking) does not flicker.
-- [ ] Consistent timing across packs (fps table in one place); animations pause when hidden and use low fps when idle; verify CPU use (target: < 2 % idle).
+- [x] Smooth state transitions: `SpriteView` keeps one preloaded layer per state and only fades layers (110 ms; the old one stays opaque underneath, so no dip), with a 280 ms minimum dwell for calm states (urgent ones - waiting/error/done/offline - switch at once) and a small scale "pop" on every change. Checked headless (offscreen Qt, mock pack, random state flips): the old version showed 15-23 fully empty frames per 14 s run, the new one 0. Not yet looked at on a real desktop.
+- [~] Timing constants live at the top of `SpriteView.qml` (fade, dwell, idle fps cap = 5); animations pause while the window is hidden. STILL TO DO: measure CPU use (target: < 2 % idle).
 - [ ] Busy vs idle behavior verified (no animation running while the window is hidden).
 - *Tests:* a pure `StateSmoother` (min dwell) unit test. *Live:* run a turn with many tool calls, watch for flicker; `top` while idle.
 
