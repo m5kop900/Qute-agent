@@ -7,7 +7,8 @@ target_include_directories(qute_mockserver PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/mo
 
 foreach(t tst_sseparser tst_agentstate tst_jsonc tst_opencodeconfig tst_clientparse tst_spritepacks
           tst_conversationmodel tst_sessionstore tst_catalog tst_modes tst_sessions
-          tst_attachments tst_slashcommands tst_composertokens tst_live tst_compactionpolicy)
+          tst_attachments tst_slashcommands tst_composertokens tst_live tst_compactionpolicy
+          tst_theme tst_appconfig)
 
     qt_add_executable(${t} ${t}.cpp)
     target_link_libraries(${t} PRIVATE qute_setup qute_core qute_mockserver Qt6::Test)

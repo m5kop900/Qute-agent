@@ -5,6 +5,7 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonValue>
 #include <QMetaProperty>
 #include <QSaveFile>
 #include <QStandardPaths>
@@ -21,6 +22,32 @@ QString AppConfig::defaultPath()
     return QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + QStringLiteral("/config.json");
 }
 
+void AppConfig::migrate(QJsonObject &obj)
+{
+    const int version = qMax(1, obj.value(QStringLiteral("configVersion")).toInt(1));
+
+    if (version < 2) {
+        // v2 (F7): the appearance block is explicit now: overlay opacity, corner radius, density and
+        // the animation switch. Older files get the defaults written once; their other keys stay.
+        if (!obj.contains(QStringLiteral("overlayOpacity")))
+            obj.insert(QStringLiteral("overlayOpacity"), 1.0);
+        if (!obj.contains(QStringLiteral("cornerRadius")))
+            obj.insert(QStringLiteral("cornerRadius"), 16);
+        if (!obj.contains(QStringLiteral("density")))
+            obj.insert(QStringLiteral("density"), QStringLiteral("compact"));
+        if (!obj.contains(QStringLiteral("animations")))
+            obj.insert(QStringLiteral("animations"), true);
+        // Early files could contain an unversioned "auto" theme; the current value is "system".
+        if (obj.value(QStringLiteral("themeMode")).toString() == QLatin1String("auto"))
+            obj.insert(QStringLiteral("themeMode"), QStringLiteral("system"));
+        // Values outside the slider range could come from hand-edited files.
+        if (obj.contains(QStringLiteral("scale")))
+            obj.insert(QStringLiteral("scale"), qBound(0.5, obj.value(QStringLiteral("scale")).toDouble(1.0), 3.0));
+    }
+
+    obj.insert(QStringLiteral("configVersion"), CurrentConfigVersion);
+}
+
 void AppConfig::load()
 {
     QFile f(m_path);
@@ -30,11 +57,15 @@ void AppConfig::load()
     const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &err);
     if (err.error != QJsonParseError::NoError || !doc.isObject())
         return;                                  // keep current values on a broken file
-    const QJsonObject obj = doc.object();
+    QJsonObject obj = doc.object();
+    migrate(obj);
+    m_configVersion = obj.value(QStringLiteral("configVersion")).toInt(CurrentConfigVersion);
 
     const QMetaObject &mo = AppConfig::staticMetaObject;
     for (int i = mo.propertyOffset(); i < mo.propertyCount(); ++i) {
         const QMetaProperty p = mo.property(i);
+        if (!p.isWritable())
+            continue;                            // configVersion/configPath are derived
         if (obj.contains(QLatin1String(p.name())))
             setProperty(p.name(), obj.value(QLatin1String(p.name())).toVariant());
     }
@@ -42,12 +73,24 @@ void AppConfig::load()
 
 bool AppConfig::save()
 {
+    // Keep keys this version does not know about (plugins, future options, hand edits).
     QJsonObject obj;
+    QFile existing(m_path);
+    if (existing.open(QIODevice::ReadOnly)) {
+        const QJsonDocument doc = QJsonDocument::fromJson(existing.readAll());
+        if (doc.isObject())
+            obj = doc.object();
+    }
+
     const QMetaObject &mo = AppConfig::staticMetaObject;
     for (int i = mo.propertyOffset(); i < mo.propertyCount(); ++i) {
         const QMetaProperty p = mo.property(i);
+        if (!p.isWritable())
+            continue;
         obj.insert(QLatin1String(p.name()), QJsonValue::fromVariant(property(p.name())));
     }
+    obj.insert(QStringLiteral("configVersion"), CurrentConfigVersion);
+
     QDir().mkpath(QFileInfo(m_path).absolutePath());
     QSaveFile f(m_path);                         // atomic write (temp file + rename)
     if (!f.open(QIODevice::WriteOnly))

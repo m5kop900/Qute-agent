@@ -31,6 +31,13 @@ public:
     Q_INVOKABLE QStringList variantsOf(const QString &packId) const;
     Q_INVOKABLE QVariantMap stateInfo(const QString &stateName) const;
 
+    // F7.2: user pack folder + validation. validatePack accepts a pack id or a directory path and
+    // returns { ok, path, errors: [...], warnings: [...] }.
+    Q_INVOKABLE QString packsFolder() const;
+    Q_INVOKABLE bool openPacksFolder();
+    Q_INVOKABLE QVariantMap validatePack(const QString &packIdOrPath) const;
+    Q_INVOKABLE QVariantList validateUserPacks() const;   // every folder in packsFolder(), broken ones included
+
 signals:
     void loaded();
     void packsChanged();

@@ -1,0 +1,8 @@
+{
+  "uuid": "qute@qute-agent",
+  "name": "Qute Agent placement",
+  "description": "Lets Qute Agent place its overlay at the mouse cursor on GNOME Wayland (Mutter otherwise forbids clients to read the cursor or position their window).",
+  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "url": "https://github.com/m5kop900/Qute-agent",
+  "version": 1
+}

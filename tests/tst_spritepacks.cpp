@@ -8,6 +8,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QTemporaryDir>
 #include <QtTest>
 
 static const QStringList kStates = {"idle", "thinking", "working", "waiting", "done", "error", "offline"};
@@ -83,6 +84,69 @@ private slots:
         // unknown variant -> first variant; unknown state -> idle
         QVERIFY(mgr.load("bot", "does-not-exist"));
         QVERIFY(mgr.stateInfo("no-such-state").value("source").toUrl().toLocalFile().endsWith("ocean/idle.png"));
+    }
+    void validationAcceptsEveryBuiltInPack()
+    {
+        SpritePackManager mgr;
+        for (const QVariant &v : mgr.availablePacks()) {
+            const QString id = v.toMap().value("id").toString();
+            const QVariantMap r = mgr.validatePack(id);
+            QVERIFY2(r.value("ok").toBool(),
+                     qPrintable(id + ": " + r.value("errors").toStringList().join("; ")));
+        }
+    }
+    void validationReportsMissingSheets()
+    {
+        QTemporaryDir tmp;
+        QVERIFY(tmp.isValid());
+        QJsonObject manifest{
+            {"id", "broken"},
+            {"name", "Broken"},
+            {"frame", QJsonObject{{"width", 8}, {"height", 8}}},
+            {"variants", QJsonArray{"ocean"}},
+            {"states", QJsonObject{{"idle", QJsonObject{{"file", "{variant}/idle.png"}, {"frames", 2}, {"fps", 4}}}}},
+        };
+        QFile f(tmp.path() + "/manifest.json");
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write(QJsonDocument(manifest).toJson());
+        f.close();
+
+        SpritePackManager mgr;
+        const QVariantMap r = mgr.validatePack(tmp.path());
+        QCOMPARE(r.value("ok").toBool(), false);
+        QVERIFY(!r.value("errors").toStringList().isEmpty());
+        QVERIFY(!r.value("errors").toStringList().filter("cannot load").isEmpty());
+    }
+    void validationAcceptsAFlatPackWithoutVariants()
+    {
+        QTemporaryDir tmp;
+        QVERIFY(tmp.isValid());
+        QImage sheet(8, 8, QImage::Format_ARGB32);
+        sheet.fill(Qt::transparent);
+        QVERIFY(sheet.save(tmp.path() + "/idle.png"));
+
+        QJsonObject manifest{
+            {"id", "flat"},
+            {"name", "Flat"},
+            {"frame", QJsonObject{{"width", 8}, {"height", 8}}},
+            {"variants", QJsonArray{}},
+            {"states", QJsonObject{
+                {"idle", QJsonObject{{"file", "idle.png"}, {"frames", 1}, {"fps", 2}}},
+                {"working", QJsonObject{{"file", "idle.png"}, {"frames", 1}, {"fps", 2}}},
+            }},
+            {"fallback", QJsonObject{{"thinking", "working"}, {"done", "idle"}}},
+        };
+        QFile f(tmp.path() + "/manifest.json");
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write(QJsonDocument(manifest).toJson());
+        f.close();
+
+        SpritePackManager mgr;
+        const QVariantMap r = mgr.validatePack(tmp.path());
+        QVERIFY2(r.value("ok").toBool(),
+                 qPrintable(r.value("errors").toStringList().join("; ")));
+        // No variants is legal (flat layout) but worth a warning.
+        QVERIFY(!r.value("warnings").toStringList().filter("flat layout").isEmpty());
     }
 };
 

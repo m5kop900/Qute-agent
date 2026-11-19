@@ -1,0 +1,42 @@
+# Maintainer: Qute Agent maintainers <maintainer@example.com>
+#
+# VCS package while the project has no release tag yet. Once a tag exists, switch `source`
+# to the release tarball and drop `pkgver()` for a stable package.
+#
+# Build locally:      makepkg -si
+# Update metadata:    makepkg --printsrcinfo > .SRCINFO
+#
+# NOTE: the repository currently has no LICENSE file. Replace `license=('custom')` with the
+# project's real license (and add it to the install) before submitting to the AUR.
+pkgname=qute-agent-git
+pkgver=r18.15ab29b
+pkgrel=1
+pkgdesc="Animated desktop companion for opencode (sprite overlay + settings app)"
+arch=('x86_64' 'aarch64')
+url="https://github.com/m5kop900/Qute-agent"
+license=('custom')
+depends=('qt6-base' 'qt6-declarative' 'qt6-svg')
+makedepends=('cmake' 'ninja' 'git')
+optdepends=('opencode: the local agent server this app talks to')
+provides=('qute-agent')
+conflicts=('qute-agent')
+options=('!debug')
+source=("$pkgname::git+https://github.com/m5kop900/Qute-agent.git")
+sha256sums=('SKIP')
+
+pkgver() {
+    cd "$pkgname"
+    printf 'r%s.%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+build() {
+    cmake -S "$pkgname" -B build -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DQUTE_BUILD_TESTS=OFF
+    cmake --build build
+}
+
+package() {
+    DESTDIR="$pkgdir" cmake --install build --strip
+}

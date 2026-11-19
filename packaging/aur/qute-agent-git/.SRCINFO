@@ -1,0 +1,22 @@
+pkgbase = qute-agent-git
+	pkgdesc = Animated desktop companion for opencode (sprite overlay + settings app)
+	pkgver = r18.15ab29b
+	pkgrel = 1
+	url = https://github.com/m5kop900/Qute-agent
+	arch = x86_64
+	arch = aarch64
+	license = custom
+	makedepends = cmake
+	makedepends = ninja
+	makedepends = git
+	depends = qt6-base
+	depends = qt6-declarative
+	depends = qt6-svg
+	optdepends = opencode: the local agent server this app talks to
+	provides = qute-agent
+	conflicts = qute-agent
+	options = !debug
+	source = qute-agent-git::git+https://github.com/m5kop900/Qute-agent.git
+	sha256sums = SKIP
+
+pkgname = qute-agent-git

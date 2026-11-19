@@ -14,5 +14,6 @@
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSPrincipalClass</key><string>NSApplication</string>
+    <key>NSAppleEventsUsageDescription</key><string>Qute Agent opens Terminal to run the opencode TUI for your current session.</string>
 </dict>
 </plist>

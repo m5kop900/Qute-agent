@@ -1,8 +1,11 @@
 #include "spritepackmanager.h"
 
 #include <QCoreApplication>
+#include <QDesktopServices>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
+#include <QImage>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QStandardPaths>
@@ -126,4 +129,128 @@ QVariantMap SpritePackManager::stateInfo(const QString &stateName) const
         {"frames", s.value("frames").toInt(1)},
         {"fps", s.value("fps").toInt(8)},
     };
+}
+
+QString SpritePackManager::packsFolder() const
+{
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+                        + QStringLiteral("/spritepacks");
+    QDir().mkpath(dir);
+    return dir;
+}
+
+bool SpritePackManager::openPacksFolder()
+{
+    return QDesktopServices::openUrl(QUrl::fromLocalFile(packsFolder()));
+}
+
+QVariantMap SpritePackManager::validatePack(const QString &packIdOrPath) const
+{
+    QStringList errors;
+    QStringList warnings;
+
+    const QFileInfo given(packIdOrPath);
+    const QString dir = given.isDir() ? given.absoluteFilePath() : packDir(packIdOrPath);
+    if (dir.isEmpty() || !QFileInfo(dir).isDir()) {
+        errors << QStringLiteral("pack folder not found: %1").arg(packIdOrPath);
+        return {{"ok", false}, {"path", dir}, {"errors", errors}, {"warnings", warnings}};
+    }
+
+    const QJsonObject m = readManifest(dir);
+    if (m.isEmpty()) {
+        errors << QStringLiteral("%1/manifest.json is missing or not valid JSON").arg(dir);
+        return {{"ok", false}, {"path", dir}, {"errors", errors}, {"warnings", warnings}};
+    }
+
+    const QString id = m.value("id").toString();
+    if (id.isEmpty())
+        errors << QStringLiteral("manifest: \"id\" is empty");
+    const int fw = m.value("frame").toObject().value("width").toInt();
+    const int fh = m.value("frame").toObject().value("height").toInt();
+    if (fw <= 0 || fh <= 0)
+        errors << QStringLiteral("manifest: frame.width/frame.height must be positive");
+
+    QStringList variants;
+    for (const QJsonValue &v : m.value("variants").toArray()) {
+        const QString name = v.toString();
+        if (name.isEmpty())
+            errors << QStringLiteral("manifest: empty variant name");
+        else if (variants.contains(name))
+            errors << QStringLiteral("manifest: duplicate variant \"%1\"").arg(name);
+        else
+            variants << name;
+    }
+    if (variants.isEmpty())
+        warnings << QStringLiteral("no variants: the pack uses a flat layout and {variant} becomes empty");
+
+    const QJsonObject states = m.value("states").toObject();
+    const QJsonObject fallback = m.value("fallback").toObject();
+    if (states.isEmpty()) {
+        errors << QStringLiteral("manifest: \"states\" is empty");
+    } else if (!states.contains(QStringLiteral("idle"))) {
+        errors << QStringLiteral("manifest: the \"idle\" state is required (it is the fallback target)");
+    }
+
+    const QStringList known = {"idle", "thinking", "working", "waiting", "done", "error", "offline"};
+    for (const QString &state : known) {
+        if (states.contains(state))
+            continue;
+        QString resolved = state;
+        for (int hops = 0; hops < 5 && !states.contains(resolved); ++hops) {
+            if (!fallback.contains(resolved)) { resolved = QStringLiteral("idle"); break; }
+            resolved = fallback.value(resolved).toString();
+        }
+        if (!states.contains(resolved))
+            warnings << QStringLiteral("state \"%1\" has no sheet and no usable fallback").arg(state);
+    }
+
+    for (auto it = states.begin(); it != states.end(); ++it) {
+        const QString state = it.key();
+        QString file = it.value().toObject().value("file").toString();
+        const int frames = it.value().toObject().value("frames").toInt();
+        const int fps = it.value().toObject().value("fps").toInt();
+        if (file.isEmpty())
+            errors << QStringLiteral("state \"%1\": file is empty").arg(state);
+        if (frames < 1)
+            errors << QStringLiteral("state \"%1\": frames must be at least 1").arg(state);
+        if (fps < 1)
+            errors << QStringLiteral("state \"%1\": fps must be at least 1").arg(state);
+        if (file.isEmpty() || frames < 1)
+            continue;
+
+        const QStringList variantNames = variants.isEmpty() ? QStringList{ QString() } : variants;
+        for (const QString &variant : variantNames) {
+            QString sheet = file;
+            sheet.replace(QStringLiteral("{variant}"), variant);
+            const QString path = QDir(dir).filePath(sheet);
+            const QImage img(path);
+            const QString what = QStringLiteral("%1/%2 (%3)").arg(state, sheet, variant.isEmpty() ? QStringLiteral("flat") : variant);
+            if (img.isNull()) {
+                errors << QStringLiteral("%1: cannot load the sheet").arg(what);
+                continue;
+            }
+            if (img.size() != QSize(fw * frames, fh))
+                errors << QStringLiteral("%1: sheet is %2x%3, expected %4x%5")
+                              .arg(what).arg(img.width()).arg(img.height()).arg(fw * frames).arg(fh);
+            if (!img.hasAlphaChannel())
+                warnings << QStringLiteral("%1: no alpha channel (the pack needs transparency)").arg(what);
+            else if (qAlpha(img.pixel(0, 0)) != 0)
+                warnings << QStringLiteral("%1: top-left pixel is not transparent").arg(what);
+        }
+    }
+
+    return {{"ok", errors.isEmpty()}, {"path", dir}, {"errors", errors}, {"warnings", warnings}};
+}
+
+QVariantList SpritePackManager::validateUserPacks() const
+{
+    QVariantList out;
+    const QDir root(packsFolder());
+    const QStringList subs = root.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    for (const QString &sub : subs) {
+        QVariantMap result = validatePack(root.filePath(sub));
+        result.insert(QStringLiteral("name"), sub);
+        out.append(result);
+    }
+    return out;
 }

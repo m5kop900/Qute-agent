@@ -16,6 +16,7 @@
 #include "setupcli.h"
 #include "singleinstance.h"
 #include "spritepackmanager.h"
+#include "theme.h"
 
 #include <QCommandLineParser>
 #include <QCoreApplication>
@@ -26,6 +27,29 @@
 #include <QQuickWindow>
 #include <QTimer>
 
+#if defined(Q_OS_WIN)
+#include <cstdio>
+#include <windows.h>
+
+// The executable is built as a GUI app (WIN32_EXECUTABLE), so Windows gives it no console window
+// when it is launched from Explorer, and no output when it is launched from cmd/PowerShell.
+// Re-attach to the console of the parent process so `qute --version`, `qute toggle --help` and the
+// terminal setup wizard keep working. Returns silently when there is no parent console (autostart).
+// Note: cmd.exe does not wait for GUI apps, so for an interactive wizard prefer
+//   start /wait qute opencode setup
+// (documented in packaging/windows/README.md).
+static void attachParentConsole()
+{
+    if (!AttachConsole(ATTACH_PARENT_PROCESS))
+        return;
+    // Reopen the CRT streams onto the console we just attached to.
+    if (!std::freopen("CONOUT$", "w", stdout))
+        return;
+    std::freopen("CONOUT$", "w", stderr);
+    std::freopen("CONIN$", "r", stdin);
+}
+#endif
+
 static QString ipcName()
 {
     QString user = qEnvironmentVariable("USER", qEnvironmentVariable("USERNAME", QStringLiteral("user")));
@@ -34,6 +58,10 @@ static QString ipcName()
 
 int main(int argc, char *argv[])
 {
+#if defined(Q_OS_WIN)
+    attachParentConsole();
+#endif
+
     // Terminal commands (`qute opencode ...`, `qute setup`) must work without a display (SSH, TTY):
     // handle them with a plain QCoreApplication BEFORE any GUI object exists.
     if (argc >= 2) {
@@ -87,6 +115,7 @@ int main(int argc, char *argv[])
 
     AppConfig config;
     config.enableWatching();
+    Theme theme(&config);                                // overlay colors, resolved from config + system palette
     SpritePackManager packs;
     packs.load(config.packId(), config.variant());
     QObject::connect(&config, &AppConfig::changed, &packs, [&] { packs.load(config.packId(), config.variant()); });
@@ -102,6 +131,7 @@ int main(int argc, char *argv[])
     QQmlApplicationEngine engine;
     QQmlContext *ctx = engine.rootContext();
     ctx->setContextProperty(QStringLiteral("config"), &config);
+    ctx->setContextProperty(QStringLiteral("theme"), &theme);
     ctx->setContextProperty(QStringLiteral("packs"), &packs);
     ctx->setContextProperty(QStringLiteral("client"), &client);
     ctx->setContextProperty(QStringLiteral("agent"), &agent);

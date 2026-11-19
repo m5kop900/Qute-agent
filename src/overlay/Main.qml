@@ -59,7 +59,7 @@ Window {
     // A new level (or another UI scale) needs a window tall enough for the card: ask the shell for it.
     onContentHeightChanged: controller.resizeToContent(win.contentHeight, win.dropRoom)
 
-    Theme { id: appTheme; cfg: config }
+    Theme { id: appTheme }
 
     // Input region: only the visible card (or an open dropdown) takes mouse input; the slack below it
     // is transparent to the mouse and clicks reach whatever is underneath.

@@ -17,6 +17,22 @@ if(UNIX AND NOT APPLE)
 endif()
 qt_standard_project_setup(REQUIRES 6.5)
 
+if(WIN32)
+    # Adds the app icon + VERSIONINFO block to a Windows executable and builds it as a GUI app
+    # (no console window when launched from Explorer). qute re-attaches to the parent console in
+    # main.cpp so the CLI and the setup wizard still print to cmd/PowerShell.
+    function(qute_add_windows_resource target icon description internal_name original_name)
+        set(QUTE_RC_ICON "${CMAKE_SOURCE_DIR}/packaging/windows/${icon}")
+        set(QUTE_RC_DESCRIPTION "${description}")
+        set(QUTE_RC_INTERNAL_NAME "${internal_name}")
+        set(QUTE_RC_ORIGINAL_NAME "${original_name}")
+        set(QUTE_RC_FILE "${CMAKE_CURRENT_BINARY_DIR}/${target}.rc")
+        configure_file("${CMAKE_SOURCE_DIR}/packaging/windows/app.rc.in" "${QUTE_RC_FILE}" @ONLY)
+        target_sources(${target} PRIVATE "${QUTE_RC_FILE}")
+        set_target_properties(${target} PROPERTIES WIN32_EXECUTABLE TRUE)
+    endfunction()
+endif()
+
 option(QUTE_BUILD_TESTS "Build unit tests (needs Qt6::Test)" ON)
 
 add_subdirectory(src/core)
@@ -36,4 +52,15 @@ if(NOT APPLE)
             PATTERN "preview.png" EXCLUDE)
     install(FILES packaging/qute-settings.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
     install(FILES packaging/qute.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+    install(FILES packaging/icons/qute.svg packaging/icons/qute-settings.svg
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
+    # The GNOME Shell extension is installed as data, not into the system extensions folder:
+    # the user enables it with packaging/gnome-shell/install.sh (or the copy under share/qute).
+    install(DIRECTORY packaging/gnome-shell/qute@qute-agent
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/qute/gnome-shell)
+    install(PROGRAMS packaging/gnome-shell/install.sh
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/qute/gnome-shell)
+    install(FILES README.md docs/ARCHITECTURE.md docs/OPENCODE.md docs/PLATFORMS.md docs/MACOS.md
+                  docs/SETUP_WIZARD.md docs/SPRITE_PACK.md
+            DESTINATION ${CMAKE_INSTALL_DOCDIR})
 endif()

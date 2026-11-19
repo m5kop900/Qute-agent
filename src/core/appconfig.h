@@ -4,6 +4,8 @@
 #include <QString>
 #include <QTimer>
 
+class QJsonObject;
+
 // All user settings, persisted as flat JSON (<AppConfigLocation>/config.json, e.g. ~/.config/qute/config.json).
 // Shared by the overlay (watches the file, live reload) and the settings app (edits + save()).
 //
@@ -12,6 +14,8 @@
 // adding the property + member + default only.
 class AppConfig : public QObject {
     Q_OBJECT
+    Q_PROPERTY(int configVersion READ configVersion NOTIFY changed)   // schema version, see migrate()
+    Q_PROPERTY(QString configPath READ configPath CONSTANT)
     // --- opencode server ---
     Q_PROPERTY(QString serverUrl READ serverUrl WRITE setServerUrl NOTIFY changed)
     Q_PROPERTY(QString serverUsername READ serverUsername WRITE setServerUsername NOTIFY changed)
@@ -29,6 +33,10 @@ class AppConfig : public QObject {
     Q_PROPERTY(QString themeMode READ themeMode WRITE setThemeMode NOTIFY changed)   // system | light | dark
     Q_PROPERTY(QString accentColor READ accentColor WRITE setAccentColor NOTIFY changed) // "" = system accent
     Q_PROPERTY(double scale READ scale WRITE setScale NOTIFY changed)
+    Q_PROPERTY(double overlayOpacity READ overlayOpacity WRITE setOverlayOpacity NOTIFY changed) // 0.3 .. 1.0 (F7.2)
+    Q_PROPERTY(int cornerRadius READ cornerRadius WRITE setCornerRadius NOTIFY changed)           // F7.2
+    Q_PROPERTY(QString density READ density WRITE setDensity NOTIFY changed)                     // compact | normal | spacious
+    Q_PROPERTY(bool animations READ animations WRITE setAnimations NOTIFY changed)               // F7.2
     // --- behavior ---
     Q_PROPERTY(bool placeAtCursor READ placeAtCursor WRITE setPlaceAtCursor NOTIFY changed)
     Q_PROPERTY(bool hideOnFocusLoss READ hideOnFocusLoss WRITE setHideOnFocusLoss NOTIFY changed)
@@ -41,10 +49,17 @@ public:
 
     static QString defaultPath();
 
+    static constexpr int CurrentConfigVersion = 2;
+
+    // Upgrades an on-disk object in place. Public so tests can check every step without writing files.
+    static void migrate(QJsonObject &obj);
+
     Q_INVOKABLE void load();
     Q_INVOKABLE bool save();
     void enableWatching();          // overlay only: reload when the file changes on disk
 
+    int configVersion() const { return m_configVersion; }
+    QString configPath() const { return m_path; }
     QString serverUrl() const { return m_serverUrl; }
     QString serverUsername() const { return m_serverUsername; }
     QString serverPassword() const { return m_serverPassword; }
@@ -60,6 +75,10 @@ public:
     QString themeMode() const { return m_themeMode; }
     QString accentColor() const { return m_accentColor; }
     double scale() const { return m_scale; }
+    double overlayOpacity() const { return m_overlayOpacity; }
+    int cornerRadius() const { return m_cornerRadius; }
+    QString density() const { return m_density; }
+    bool animations() const { return m_animations; }
     bool placeAtCursor() const { return m_placeAtCursor; }
     int maxAttachmentSizeMB() const { return m_maxAttachmentSizeMB; }
     bool hideOnFocusLoss() const { return m_hideOnFocusLoss; }
@@ -82,6 +101,15 @@ public:
     void setThemeMode(const QString &v) { assign(m_themeMode, v); }
     void setAccentColor(const QString &v) { assign(m_accentColor, v); }
     void setScale(double v) { assign(m_scale, qBound(0.5, v, 3.0)); }
+    void setOverlayOpacity(double v) { assign(m_overlayOpacity, qBound(0.3, v, 1.0)); }
+    void setCornerRadius(int v) { assign(m_cornerRadius, qBound(0, v, 40)); }
+    void setDensity(const QString &v)
+    {
+        const QString d = (v == QLatin1String("normal") || v == QLatin1String("spacious"))
+                              ? v : QStringLiteral("compact");
+        assign(m_density, d);
+    }
+    void setAnimations(bool v) { assign(m_animations, v); }
     void setPlaceAtCursor(bool v) { assign(m_placeAtCursor, v); }
     void setHideOnFocusLoss(bool v) { assign(m_hideOnFocusLoss, v); }
     void setAutoCompactEnabled(bool v) { assign(m_autoCompactEnabled, v); }
@@ -102,6 +130,7 @@ private:
     }
 
     QString m_path;
+    int m_configVersion = CurrentConfigVersion;
     QString m_serverUrl = QStringLiteral("http://127.0.0.1:4096");
     QString m_serverUsername = QStringLiteral("opencode");
     QString m_serverPassword;
@@ -117,6 +146,10 @@ private:
     QString m_themeMode = QStringLiteral("system");
     QString m_accentColor;
     double m_scale = 1.0;
+    double m_overlayOpacity = 1.0;
+    int m_cornerRadius = 16;
+    QString m_density = QStringLiteral("compact");
+    bool m_animations = true;
     bool m_placeAtCursor = true;
     bool m_hideOnFocusLoss = false;
     bool m_autoCompactEnabled = true;

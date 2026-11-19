@@ -1,6 +1,7 @@
 #include "platformshell.h"
 
 #include "genericshell.h"
+#include "gnomeshell.h"
 #include "kwinshell.h"
 #if defined(Q_OS_MACOS)
 #include "macshell.h"
@@ -21,6 +22,14 @@ static bool kwinIsRunning()
     QDBusConnectionInterface *iface = QDBusConnection::sessionBus().interface();
     return iface && iface->isServiceRegistered(QStringLiteral("org.kde.KWin")).value();
 }
+
+// GNOME Shell owns this name; the actual placement comes from our extension (io.github.qute.Agent).
+// Without the extension GnomeShell falls back to GenericShell, which is correct on X11.
+static bool gnomeShellIsRunning()
+{
+    QDBusConnectionInterface *iface = QDBusConnection::sessionBus().interface();
+    return iface && iface->isServiceRegistered(QStringLiteral("org.gnome.Shell")).value();
+}
 #endif
 
 PlatformShell *PlatformShell::create(QObject *parent)
@@ -31,9 +40,10 @@ PlatformShell *PlatformShell::create(QObject *parent)
 #if defined(QUTE_HAVE_DBUS)
     if (kwinIsRunning())
         return new KWinShell(parent);
+    if (gnomeShellIsRunning())
+        return new GnomeShell(parent);
 #endif
     // Windows, X11 desktops with another WM (XFCE, ...), and anything unknown.
-    // TODO(port): GNOME Wayland needs a GNOME Shell extension (see docs/PLATFORMS.md).
     return new GenericShell(parent);
 }
 

@@ -13,6 +13,7 @@ qt_add_library(qute_core STATIC
     composertokens.cpp   composertokens.h
     attachmentmodel.cpp  attachmentmodel.h
     compactionpolicy.cpp compactionpolicy.h
+    theme.cpp            theme.h
 )
 
 target_include_directories(qute_core PUBLIC

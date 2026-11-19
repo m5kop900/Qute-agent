@@ -4,6 +4,8 @@ target_sources(qute_core PRIVATE
     platformshell.cpp
     genericshell.h
     genericshell.cpp
+    gnomeshell.h
+    gnomeshell.cpp
     kwinshell.h
     kwinshell.cpp
     terminallauncher.h

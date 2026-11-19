@@ -58,6 +58,9 @@ press Save; the running overlay must change character/color within about a secon
 **M8 – Packaging & ports.** AUR PKGBUILD + install rules check; macOS signing/notarization + Homebrew cask; then Windows (`GenericShell` + hotkey docs), XFCE,
 GNOME extension (docs/PLATFORMS.md).
 
+✅ **DONE on Linux / written and syntax-checked for the other OSes** — evidence below. Nothing was run on macOS, Windows or GNOME: those are the
+first live checks to do on real machines.
+
 ## Review status (written during the M7 session; evidence = git history)
 | M | status | evidence / what is missing |
 |---|---|---|
@@ -69,6 +72,28 @@ GNOME extension (docs/PLATFORMS.md).
 | M5 | code written, live check pending (see below) | 2aedfbb only added tests (one was a placebo, now fixed). M5 session: V2 tool/shell/reasoning/step events -> states, parallel tool calls, V2 permission reply (`/api/session/{sid}/permission/{rid}/reply`), question forms (cancel only), sub-agent child sessions, 11 new state-machine tests. Written from upstream docs/tests, never run against a live server |
 | M6 | partly | settings app untouched since the first commit; `apiFlavor` was the only AppConfig field without a control (added). Live-apply is unverified |
 | M7 | done (see above) | |
+| M8 | done on Linux, other OSes written/unverified | AUR `qute-agent-git` (PKGBUILD + .SRCINFO from `makepkg --printsrcinfo`, `namcap` clean), staged install verified, icons + docs + GNOME extension in the install rules; macOS `sign-and-notarize.sh` + entitlements + Homebrew cask; Windows `WIN32_EXECUTABLE` + icon/VERSIONINFO + console re-attach, `package.ps1`/`install-shortcuts.ps1`/`qute.ahk`; `GnomeShell` + extension. Missing: live macOS/Windows/GNOME runs and a LICENSE (AUR stays `license=('custom')`) |
+
+## M8 evidence (Linux, this session)
+- Build: `cmake --build build` clean; `ctest --test-dir build` → **18/18 passed**.
+- Live KDE Wayland check: `./build/src/overlay/qute --daemon` + `qute toggle/show/hide` → the card + sprite render at the cursor with no QML
+  warnings in the log (screenshot taken; the sprite/panel followed the theme refactor below).
+- Staged install: `DESTDIR=/tmp/opencode/qute-stage cmake --install build --prefix /usr` → `usr/bin/{qute,qute-settings}`,
+  `usr/share/qute/spritepacks/*`, `applications/*.desktop`, `icons/hicolor/scalable/apps/*.svg`,
+  `qute/gnome-shell/qute@qute-agent/*`, `doc/qute/*.md`; the staged `qute --version` prints `qute 0.1.0`;
+  `desktop-file-validate` is clean (categories reduced to one main category each).
+- AUR: `makepkg --printsrcinfo > .SRCINFO` and `namcap PKGBUILD` both clean. `license=('custom')` until the project picks a license.
+- Syntax: `bash -n packaging/macos/sign-and-notarize.sh`, `sh -n packaging/gnome-shell/install.sh`,
+  `node --check packaging/gnome-shell/qute@qute-agent/extension.js`, `jq` on `metadata.json`, `xmllint` on the plists/SVGs,
+  and the PowerShell parser on both `.ps1` files — all clean.
+- **Not run:** macOS signing/notarization/cask (needs a Developer ID + a Mac), the Windows build/zip/shortcuts (needs Windows),
+  the GNOME extension (needs a GNOME session), XFCE placement. See `packaging/*/README.md` for the exact steps.
+
+**F7 leftovers fixed while validating M8:** `src/core/theme.cpp` and `tests/tst_theme.cpp` were never added to CMake, so the
+C++ `Theme` was dead code and its test never ran. It is now built, registered as the overlay's `theme` context property, and
+`Theme.qml` only exposes it to QML (one implementation instead of two). `tests/tst_appconfig.cpp` stays out of the build:
+it expects config-version/migration and appearance fields (`overlayOpacity`, `cornerRadius`, `density`, `animations`) that
+`AppConfig` does not have yet — that is still an F7 TODO, not something M8 should fake.
 
 ## M5 live check (10 minutes, needs a real OpenCode 2 server and a model that can call tools)
 Run `ctest` first (new tests: `tst_agentstate`, `tst_clientparse`). Then with `qute` open, send these prompts and watch the sprite + panel:

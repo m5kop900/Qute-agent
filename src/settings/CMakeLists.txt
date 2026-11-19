@@ -7,6 +7,7 @@ qt_add_qml_module(qute_settings
     URI Qute.Settings
     VERSION 1.0
     QML_FILES
+        AnimatedSprite.qml
         Main.qml
 )
 
@@ -23,6 +24,9 @@ if(APPLE)
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/assets/spritepacks
                 $<TARGET_BUNDLE_CONTENT_DIR:qute_settings>/Resources/spritepacks)
     install(TARGETS qute_settings BUNDLE DESTINATION .)
+elseif(WIN32)
+    qute_add_windows_resource(qute_settings qute-settings.ico "Qute Agent settings" qute-settings qute-settings.exe)
+    install(TARGETS qute_settings RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 else()
     install(TARGETS qute_settings RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
