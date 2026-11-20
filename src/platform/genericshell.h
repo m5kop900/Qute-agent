@@ -11,4 +11,10 @@ public:
     QString name() const override { return QStringLiteral("generic"); }
     void prepareWindow(QQuickWindow *window) override;
     void showAtCursor(QQuickWindow *window, bool atCursor) override;
+    void resizeContent(QQuickWindow *window, int contentHeight, int dropRoom) override;
+
+protected:
+    // Smart chatbox positioning decided in C++ (Windows, macOS, X11): places the sprite (at the cursor, or where it
+    // is now) and the card around it, then publishes the layout to the QML window.
+    static void smartPlace(QQuickWindow *window, bool atCursor, int contentHeight, int dropRoom);
 };

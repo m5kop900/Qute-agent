@@ -50,6 +50,8 @@ class AppConfig : public QObject {
     // --- behavior ---
     Q_PROPERTY(bool placeAtCursor READ placeAtCursor WRITE setPlaceAtCursor NOTIFY changed)
     Q_PROPERTY(bool hideOnFocusLoss READ hideOnFocusLoss WRITE setHideOnFocusLoss NOTIFY changed)
+    // Smart Chatbox Positioning: the chatbox goes around the sprite (any of 4 sides, top-right preferred) and never moves it.
+    Q_PROPERTY(bool smartChatboxPositioning READ smartChatboxPositioning WRITE setSmartChatboxPositioning NOTIFY changed)
     Q_PROPERTY(int maxAttachmentSizeMB READ maxAttachmentSizeMB WRITE setMaxAttachmentSizeMB NOTIFY changed) // 0 = no limit (F1.1)
     Q_PROPERTY(bool autoCompactEnabled READ autoCompactEnabled WRITE setAutoCompactEnabled NOTIFY changed)     // F5
     Q_PROPERTY(int autoCompactThreshold READ autoCompactThreshold WRITE setAutoCompactThreshold NOTIFY changed) // F5, %
@@ -102,6 +104,7 @@ public:
     bool placeAtCursor() const { return m_placeAtCursor; }
     int maxAttachmentSizeMB() const { return m_maxAttachmentSizeMB; }
     bool hideOnFocusLoss() const { return m_hideOnFocusLoss; }
+    bool smartChatboxPositioning() const { return m_smartChatboxPositioning; }
     bool autoCompactEnabled() const { return m_autoCompactEnabled; }
     int autoCompactThreshold() const { return m_autoCompactThreshold; }
 
@@ -155,6 +158,7 @@ public:
     }
     void setPlaceAtCursor(bool v) { assign(m_placeAtCursor, v); }
     void setHideOnFocusLoss(bool v) { assign(m_hideOnFocusLoss, v); }
+    void setSmartChatboxPositioning(bool v) { assign(m_smartChatboxPositioning, v); }
     void setAutoCompactEnabled(bool v) { assign(m_autoCompactEnabled, v); }
     void setAutoCompactThreshold(int v) { assign(m_autoCompactThreshold, qBound(50, v, 95)); }
 
@@ -201,6 +205,7 @@ private:
     QVariantMap m_spriteFps;
     bool m_placeAtCursor = true;
     bool m_hideOnFocusLoss = false;
+    bool m_smartChatboxPositioning = true;
     bool m_autoCompactEnabled = true;
     int m_autoCompactThreshold = 80;
 

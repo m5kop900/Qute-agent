@@ -1,11 +1,14 @@
 #include "kwinshell.h"
 
+#include "placementscript.h"
+
 #include <QPointer>
 #include <QQuickWindow>
 #include <QTimer>
 #include <QVariant>
 
 #ifdef QUTE_HAVE_DBUS
+#include <QDBusConnection>
 #include <QDBusInterface>
 #include <QDBusMessage>
 #include <QDBusReply>
@@ -86,8 +89,82 @@ static const char kResizeScript[] = R"JS(
 })();
 )JS";
 
+
+// Smart chatbox positioning. %PLACEMENTJS% is kChatboxPlacementJs (src/platform/placementscript.h).
+// The sprite is an INPUT: it is kept where the classic placement would put it (at the cursor) or where it is now,
+// and the card goes around it. Both scripts answer through callDBus with the chosen layout.
+static const char kSmartPlaceScript[] = R"JS(
+(function () {
+%PLACEMENTJS%
+    var cur = workspace.cursorPos;
+    var wins = workspace.windowList();
+    for (var i = 0; i < wins.length; i++) {
+        var w = wins[i];
+        if (String(w.caption) !== "qute-overlay")
+            continue;
+        var out = workspace.screenAt(cur);
+        var area;
+        if (out)
+            area = workspace.clientArea(KWin.PlacementArea, out, workspace.currentDesktopForScreen(out));
+        else
+            area = workspace.virtualScreenGeometry;
+        var S = %SPRITE%;
+        // Only the SPRITE is kept on screen here; the card never moves it.
+        var sx = Math.round(cur.x - 20);
+        var sy = Math.round(cur.y + 20 - S);
+        sx = Math.max(area.x, Math.min(sx, area.x + area.width - S));
+        sy = Math.max(area.y, Math.min(sy, area.y + area.height - S));
+        var r = quteChoosePlacement({ sprite: { x: sx, y: sy, w: S, h: S }, cardW: %CARDW%, cardH: %CARDH%,
+                                      dropRoom: %DROPROOM%, gap: %GAP%,
+                                      area: { x: area.x, y: area.y, w: area.width, h: area.height } });
+        w.frameGeometry = { x: r.window.x, y: r.window.y, width: r.window.w, height: r.window.h };
+        w.keepAbove = true;
+        w.skipTaskbar = true;
+        w.skipPager = true;
+        w.skipSwitcher = true;
+        workspace.activeWindow = w;
+        callDBus("io.github.qute.Overlay", "/Layout", "io.github.qute.Overlay", "LayoutReady", quteWire(r));
+    }
+})();
+)JS";
+
+static const char kSmartResizeScript[] = R"JS(
+(function () {
+%PLACEMENTJS%
+    var wins = workspace.windowList();
+    for (var i = 0; i < wins.length; i++) {
+        var w = wins[i];
+        if (String(w.caption) !== "qute-overlay")
+            continue;
+        var g = w.frameGeometry;
+        var S = %SPRITE%;
+        // Where the sprite is on screen right now: the window's origin plus the sprite's offset inside it.
+        var sx = Math.round(g.x + %OFFX%);
+        var sy = Math.round(g.y + %OFFY%);
+        var out = workspace.screenAt({ x: sx + Math.floor(S / 2), y: sy + Math.floor(S / 2) });
+        var area;
+        if (out)
+            area = workspace.clientArea(KWin.PlacementArea, out, workspace.currentDesktopForScreen(out));
+        else
+            area = workspace.virtualScreenGeometry;
+        var r = quteChoosePlacement({ sprite: { x: sx, y: sy, w: S, h: S }, cardW: %CARDW%, cardH: %CARDH%,
+                                      dropRoom: %DROPROOM%, gap: %GAP%,
+                                      area: { x: area.x, y: area.y, w: area.width, h: area.height } });
+        w.frameGeometry = { x: r.window.x, y: r.window.y, width: r.window.w, height: r.window.h };
+        callDBus("io.github.qute.Overlay", "/Layout", "io.github.qute.Overlay", "LayoutReady", quteWire(r));
+    }
+})();
+)JS";
+
 void KWinShell::prepareWindow(QQuickWindow *window)
 {
+    m_window = window;
+#ifdef QUTE_HAVE_DBUS
+    // The KWin script reports the smart layout back to this object (see LayoutReady).
+    QDBusConnection bus = QDBusConnection::sessionBus();
+    if (bus.registerService(QStringLiteral("io.github.qute.Overlay")))
+        bus.registerObject(QStringLiteral("/Layout"), this, QDBusConnection::ExportScriptableSlots);
+#endif
     // No Qt::Tool here: on KWin the script below sets skipTaskbar/keepAbove instead.
     window->setFlags(Qt::Window | Qt::FramelessWindowHint);
     window->setColor(Qt::transparent);
@@ -108,6 +185,28 @@ void KWinShell::showAtCursor(QQuickWindow *window, bool atCursor)
     window->show();
     window->requestActivate();
     m_dropRoom = shownInt(window, "shownDrop", "dropRoom");   // what the window is sized with right now
+#ifdef QUTE_HAVE_DBUS
+    if (smartEnabled(window)) {
+        if (!atCursor) {
+            reveal(window);
+            return;
+        }
+        m_window = window;
+        QPointer<QQuickWindow> g(window);
+        // KWin must have mapped the window (with its real size) before the script can move it.
+        QTimer::singleShot(80, this, [this, g] {
+            if (g) {
+                m_revealOnLayout = true;
+                dispatchSmart(true, shownInt(g.data(), "shownHeight", "contentHeight"), shownInt(g.data(), "shownDrop", "dropRoom"));
+            }
+        });
+        QTimer::singleShot(600, this, [g] {      // safety net: the window must appear even if KWin never answers
+            if (g)
+                reveal(g.data());
+        });
+        return;
+    }
+#endif
     if (!atCursor) {
         reveal(window);
         return;
@@ -135,6 +234,12 @@ void KWinShell::showAtCursor(QQuickWindow *window, bool atCursor)
 void KWinShell::resizeContent(QQuickWindow *window, int contentHeight, int dropRoom)
 {
 #ifdef QUTE_HAVE_DBUS
+    if (smartEnabled(window)) {
+        m_window = window;
+        m_dropRoom = dropRoom;
+        dispatchSmart(false, contentHeight, dropRoom);
+        return;
+    }
     const int oldRoom = m_dropRoom >= 0 ? m_dropRoom : dropRoom;
     QString js = QString::fromUtf8(kResizeScript);
     js.replace(QStringLiteral("%CONTENTH%"), QString::number(contentHeight));
@@ -202,4 +307,64 @@ void KWinShell::runScript(const QString &name, QString js)
     Q_UNUSED(name)
     Q_UNUSED(js)
 #endif
+}
+
+// ---- Smart chatbox positioning -----------------------------------------------------------------------------
+// One script at a time: the sprite's place inside the window is only known once the previous answer arrived, so a
+// request that comes in meanwhile waits (the latest one wins) and then runs with fresh numbers.
+void KWinShell::dispatchSmart(bool place, int contentHeight, int dropRoom)
+{
+#ifdef QUTE_HAVE_DBUS
+    if (!m_window)
+        return;
+    if (m_smartBusy) {
+        m_smartPending.place = m_smartPending.valid && m_smartPending.place ? true : place;
+        m_smartPending.contentHeight = contentHeight;
+        m_smartPending.dropRoom = dropRoom;
+        m_smartPending.valid = true;
+        return;
+    }
+    m_smartBusy = true;
+    const int seq = ++m_smartSeq;
+    const SmartInputs si = smartInputs(m_window, contentHeight, dropRoom);
+    QString js = QString::fromUtf8(place ? kSmartPlaceScript : kSmartResizeScript);
+    js.replace(QStringLiteral("%PLACEMENTJS%"), QString::fromUtf8(kChatboxPlacementJs));
+    js.replace(QStringLiteral("%SPRITE%"), QString::number(si.spriteSize));
+    js.replace(QStringLiteral("%CARDW%"), QString::number(si.cardW));
+    js.replace(QStringLiteral("%CARDH%"), QString::number(si.cardH));
+    js.replace(QStringLiteral("%DROPROOM%"), QString::number(si.dropRoom));
+    js.replace(QStringLiteral("%GAP%"), QString::number(si.gap));
+    js.replace(QStringLiteral("%OFFX%"), QString::number(si.spriteOffX));
+    js.replace(QStringLiteral("%OFFY%"), QString::number(si.spriteOffY));
+    runScript(QStringLiteral("qute-smart"), js);
+    // If the script never answers (callDBus unavailable, script error) do not stay busy forever.
+    QTimer::singleShot(700, this, [this, seq] {
+        if (m_smartBusy && m_smartSeq == seq)
+            smartFinished();
+    });
+#else
+    Q_UNUSED(place) Q_UNUSED(contentHeight) Q_UNUSED(dropRoom)
+#endif
+}
+
+void KWinShell::LayoutReady(const QString &wire)
+{
+    // Runs in the GUI thread (D-Bus slot of a QObject living there).
+    if (m_window)
+        applyLayoutWire(m_window, wire);
+    smartFinished();
+}
+
+void KWinShell::smartFinished()
+{
+    m_smartBusy = false;
+    if (m_revealOnLayout && m_window) {
+        m_revealOnLayout = false;
+        reveal(m_window);                     // at its final place, with its layout
+    }
+    if (m_smartPending.valid) {
+        const PendingSmart p = m_smartPending;
+        m_smartPending = PendingSmart();
+        dispatchSmart(p.place, p.contentHeight, p.dropRoom);
+    }
 }

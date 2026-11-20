@@ -2,6 +2,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QTimer>
+#include <QVariantList>
 
 class AppConfig;
 class PlatformShell;
@@ -28,6 +29,9 @@ public:
     // Limits mouse input to a rectangle of the window (the window keeps its size, the rest of it
     // is transparent and lets clicks pass through). Empty w/h clears the limit.
     Q_INVOKABLE void setInputRegion(int x, int y, int w, int h);
+    // Same, for several rectangles (smart chatbox positioning: the sprite and the card are not always one block).
+    // `rects` is a list of {x, y, w, h} objects. An empty list clears the limit.
+    Q_INVOKABLE void setInputRects(const QVariantList &rects);
     // Ask the platform shell to size the window for a card of `contentHeight` px, keeping the card's
     // bottom edge (the prompt box) where it is on screen. `dropRoom` px of empty room stay below it.
     Q_INVOKABLE void resizeToContent(int contentHeight, int dropRoom);

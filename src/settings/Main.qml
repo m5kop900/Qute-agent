@@ -160,6 +160,18 @@ ApplicationWindow {
                                 anchors.fill: parent
                                 CheckBox { text: qsTr("Open next to the mouse cursor"); checked: config.placeAtCursor; onToggled: config.placeAtCursor = checked }
                                 CheckBox { text: qsTr("Hide when the window loses focus"); checked: config.hideOnFocusLoss; onToggled: config.hideOnFocusLoss = checked }
+                                CheckBox {
+                                    text: qsTr("Smart Chatbox Positioning")
+                                    checked: config.smartChatboxPositioning
+                                    onToggled: config.smartChatboxPositioning = checked
+                                }
+                                Label {
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 28
+                                    wrapMode: Text.Wrap
+                                    opacity: 0.7
+                                    text: qsTr("Automatically positions the chatbox around the sprite without moving it.")
+                                }
                             }
                         }
 

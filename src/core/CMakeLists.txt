@@ -14,6 +14,7 @@ qt_add_library(qute_core STATIC
     attachmentmodel.cpp  attachmentmodel.h
     compactionpolicy.cpp compactionpolicy.h
     theme.cpp            theme.h
+    chatboxplacement.cpp chatboxplacement.h
 )
 
 target_include_directories(qute_core PUBLIC

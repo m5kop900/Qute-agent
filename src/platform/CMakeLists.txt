@@ -8,6 +8,7 @@ target_sources(qute_core PRIVATE
     gnomeshell.cpp
     kwinshell.h
     kwinshell.cpp
+    placementscript.h
     terminallauncher.h
     terminallauncher.cpp
 )

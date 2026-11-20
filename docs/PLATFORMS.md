@@ -33,7 +33,7 @@ small GNOME Shell extension over D-Bus. Contract:
 |---|---|
 | Bus name / interface | `io.github.qute.Agent` |
 | Object path | `/io/github/qute/Agent` |
-| Methods | `PlaceWindow(width, contentHeight, dropRoom)`, `ResizeWindow(contentHeight, dropRoom)` |
+| Methods | `PlaceWindow(width, contentHeight, dropRoom)`, `ResizeWindow(contentHeight, dropRoom)`; smart chatbox positioning: `PlaceWindowSmart(spriteSize, cardW, cardH, dropRoom, gap) -> s`, `ResizeWindowSmart(spriteOffX, spriteOffY, spriteSize, cardW, cardH, dropRoom, gap) -> s` (the string is the layout, see "Smart chatbox positioning" in ARCHITECTURE.md) |
 | Window lookup | window title `qute-overlay` (same contract as the KWin script) |
 
 Install for the current user:

@@ -2,6 +2,8 @@
 #include <QObject>
 #include <QString>
 
+#include "chatboxplacement.h"
+
 class QQuickWindow;
 
 // Everything that differs per OS / desktop environment goes behind this interface.
@@ -35,4 +37,24 @@ public:
     static void reveal(QQuickWindow *window);
 
     static PlatformShell *create(QObject *parent = nullptr);
+
+    // ---- Smart chatbox positioning (setting "smartChatboxPositioning", see docs/ARCHITECTURE.md) -----------
+    // The window holds the sprite, the card and the drop room. With the setting on, the shell decides where the
+    // card goes AROUND the sprite (src/core/chatboxplacement) and never moves the sprite to make it fit. The
+    // window property "smartPlacement" says whether it is on; the QML window publishes the sizes below.
+    struct SmartInputs {
+        int spriteSize = 0;
+        int cardW = 0;          // 0 (with cardH 0): minimized, the window is the sprite alone
+        int cardH = 0;
+        int dropRoom = 0;
+        int gap = 4;
+        int spriteOffX = 0;     // where the sprite is inside the window right now
+        int spriteOffY = 0;
+    };
+    static bool smartEnabled(QQuickWindow *window);
+    // contentHeight/dropRoom are what the QML card asked for (shownHeight/shownDrop).
+    static SmartInputs smartInputs(QQuickWindow *window, int contentHeight, int dropRoom);
+    // Publishes the chosen layout to the QML window (properties layout*). Returns false for a bad wire string.
+    static bool applyLayoutWire(QQuickWindow *window, const QString &wire);
+    static void applyLayout(QQuickWindow *window, const ChatboxPlacement::Result &r);
 };

@@ -109,6 +109,32 @@ private slots:
         QCOMPARE(c.density(), QStringLiteral("compact"));
     }
 
+    void smartChatboxPositioningDefaultsToOnAndPersists()
+    {
+        {
+            AppConfig c;
+            QCOMPARE(c.smartChatboxPositioning(), true);      // default: enabled
+            c.setSmartChatboxPositioning(false);
+            QVERIFY(c.save());
+        }
+        {
+            AppConfig off;
+            QCOMPARE(off.smartChatboxPositioning(), false);   // survives a restart
+            off.setSmartChatboxPositioning(true);
+            QVERIFY(off.save());
+        }
+        AppConfig on;
+        QCOMPARE(on.smartChatboxPositioning(), true);
+    }
+
+    void configFilesWithoutTheSmartKeyKeepTheDefault()
+    {
+        writeConfig({{"configVersion", 2}, {"placeAtCursor", false}});   // a file written before the setting existed
+        AppConfig c;
+        QCOMPARE(c.smartChatboxPositioning(), true);
+        QCOMPARE(c.placeAtCursor(), false);
+    }
+
     void longCardHeightIsClamped()
     {
         AppConfig c;

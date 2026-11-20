@@ -13,6 +13,33 @@ Window {
     // Set by PlatformShell::reveal() once the window is at its final position.
     property bool placed: false
 
+    // ---- Smart Chatbox Positioning (setting smartChatboxPositioning) -------------------------------------
+    // On: the platform shell puts the card AROUND the sprite (right, left, above or below; top-right preferred) and
+    // never moves the sprite to make room. It publishes the result in the layout* properties below (see
+    // PlatformShell::applyLayout); this file only draws the sprite and the card at those offsets inside the window.
+    // Off (or before the first layout arrived): the classic arrangement, exactly as before.
+    readonly property bool smartPlacement: config.smartChatboxPositioning
+    property int layoutSeq: 0              // 0 = no layout received yet
+    property string layoutDir: "right"
+    property int layoutSpriteX: 0
+    property int layoutSpriteY: 0
+    property int layoutCardX: 0
+    property int layoutCardY: 0
+    property int layoutCardW: 0
+    property int layoutCardH: 0
+    property int layoutWinW: 0
+    property int layoutWinH: 0
+    property bool layoutAnchorBottom: true // true: the card's bottom edge stays put while its height changes
+    property bool layoutValid: true
+    readonly property bool smartLayoutActive: smartPlacement && layoutSeq > 0
+    // Read by the platform shell (smart mode): the sprite size, the card width and the gap between them, and where
+    // the sprite is inside the window right now (the shell derives the sprite's place on screen from it).
+    readonly property int smartSpriteSize: spriteSize
+    readonly property int smartCardW: Math.max(0, fullWidth - spriteSize - Math.round(10 * s))
+    readonly property int smartGap: Math.round(4 * s)
+    readonly property int spriteOffX: Math.round(sprite.x)
+    readonly property int spriteOffY: Math.round(sprite.y)
+
     readonly property real s: config.scale
     // Summon effect room: while the summon animation runs, the window is this much wider on the left
     // (and the content starts shifted right by it), so the ring, the sparkles and the overshoot are
@@ -83,10 +110,13 @@ Window {
     readonly property int shownHeight: windowFolded ? spriteSize : contentHeight
     readonly property int shownDrop: windowFolded ? 0 : dropRoom
     readonly property int shownWidth: windowFolded ? spriteSize : fullWidth
-    readonly property int cardHeight: Math.min(Math.round(panelHeights[desiredLevel] * s) + attachExtra,
-                                               Math.max(0, Math.round(cardBottom - contentTop)))
+    // Smart layout: never taller than the card the shell laid out (the window is that big); the classic cap otherwise.
+    readonly property int cardHeight: smartLayoutActive
+        ? Math.min(Math.round(panelHeights[desiredLevel] * s) + attachExtra, layoutCardH)
+        : Math.min(Math.round(panelHeights[desiredLevel] * s) + attachExtra,
+                   Math.max(0, Math.round(cardBottom - contentTop)))
 
-    width: cardW + Math.round(summonBleed)
+    width: smartLayoutActive ? layoutWinW : cardW + Math.round(summonBleed)
     // The height is applied by the platform shell (see contentHeight/dropRoom); this only gives the
     // surface a sensible size before the first placement.
     // A new level (or another UI scale) needs a window tall enough for the card: ask the shell for it.
@@ -110,17 +140,8 @@ Window {
 
     // Input region: only the visible card (or an open dropdown) takes mouse input; the slack below it
     // is transparent to the mouse and clicks reach whatever is underneath.
-    function updateInputRegion() {
-        if (win.collapsed && win.openAmt < 0.01) {
-            // Minimized: only the sprite takes clicks, everything else passes through to the desktop.
-            controller.setInputRegion(Math.floor(sprite.x), Math.floor(sprite.y),
-                                      Math.ceil(sprite.width), Math.ceil(sprite.height))
-            return
-        }
-        // Use the panel's real height, not the target level's, so the region matches what is drawn
-        // during the 220 ms height animation as well.
-        let top = win.cardBottom - panel.height
-        let bottom = win.cardBottom
+    // Grows the vertical range [top, bottom] of the card's click area by the dropdowns that hang out of it.
+    function popupExtent(top, bottom) {
         if (menuStrip.popupOpen) {
             // A dropdown can open above or below the strip: the clickable area covers it either way.
             const stripY = menuStrip.mapToItem(win.contentItem, 0, 0).y
@@ -141,6 +162,42 @@ Window {
             top = Math.min(top, Math.floor(composer.menuTop))
             bottom = Math.max(bottom, Math.ceil(composer.menuBottom))
         }
+        return { top: top, bottom: bottom }
+    }
+
+    // Smart layout: the sprite and the card are two blocks (not always side by side), so the clickable area is
+    // two rectangles; everything else of the window lets clicks through.
+    function updateSmartInputRegion() {
+        const rects = [{ x: Math.floor(sprite.x), y: Math.floor(sprite.y),
+                         w: Math.ceil(sprite.width), h: Math.ceil(sprite.height) }]
+        if (!(win.collapsed && win.openAmt < 0.01)) {
+            const ext = win.popupExtent(panel.y, panel.y + panel.height)
+            const top = Math.max(0, Math.round(ext.top))
+            const bottom = Math.min(Math.round(ext.bottom), win.height)
+            const left = Math.max(0, Math.floor(panel.x))
+            const right = Math.min(Math.ceil(panel.x + panel.width), win.width)
+            if (right > left && bottom > top)
+                rects.push({ x: left, y: top, w: right - left, h: bottom - top })
+        }
+        controller.setInputRects(rects)
+    }
+
+    function updateInputRegion() {
+        if (win.smartLayoutActive) {
+            win.updateSmartInputRegion()
+            return
+        }
+        if (win.collapsed && win.openAmt < 0.01) {
+            // Minimized: only the sprite takes clicks, everything else passes through to the desktop.
+            controller.setInputRegion(Math.floor(sprite.x), Math.floor(sprite.y),
+                                      Math.ceil(sprite.width), Math.ceil(sprite.height))
+            return
+        }
+        // Use the panel's real height, not the target level's, so the region matches what is drawn
+        // during the 220 ms height animation as well.
+        const ext = win.popupExtent(win.cardBottom - panel.height, win.cardBottom)
+        let top = ext.top
+        let bottom = ext.bottom
         top = Math.max(0, Math.round(top))
         bottom = Math.min(Math.round(bottom), win.height)
         controller.setInputRegion(0, top, win.width, bottom - top)
@@ -149,6 +206,7 @@ Window {
     onOpenAmtChanged: updateInputRegion()
     onWidthChanged: updateInputRegion()
     onHeightChanged: updateInputRegion()
+    onLayoutSeqChanged: updateInputRegion()
     Connections {
         target: menuStrip
         function onPopupOpenChanged() { win.updateInputRegion() }
@@ -214,8 +272,9 @@ Window {
             width: win.spriteSize
             height: width
             // Sits on the prompt box's bottom edge, which stays put while the card grows upward.
-            x: Math.round(win.summonBleed)
-            y: win.cardBottom - height
+            // Smart layout: where the shell put it inside the window (a sprite-sized window holds it at 0,0).
+            x: win.smartLayoutActive ? (win.windowIsSprite ? 0 : win.layoutSpriteX) : Math.round(win.summonBleed)
+            y: win.smartLayoutActive ? (win.windowIsSprite ? 0 : win.layoutSpriteY) : win.cardBottom - height
             stateName: win.st
             animate: config.animations      // "Animations" switch in settings
             scale: 1
@@ -289,9 +348,12 @@ Window {
 
         Rectangle {
             id: panel
-            x: sprite.x + sprite.width + Math.round(4 * win.s)
-            y: win.cardBottom - height   // grows upward; the bottom edge (prompt box) stays put
-            width: parent.width - x - Math.round(6 * win.s)
+            // Classic: right of the sprite, growing upward; the bottom edge (prompt box) stays put.
+            // Smart layout: the rectangle the shell chose; the anchored edge (bottom or top) stays put.
+            x: win.smartLayoutActive ? win.layoutCardX : sprite.x + sprite.width + Math.round(4 * win.s)
+            y: win.smartLayoutActive ? (win.layoutAnchorBottom ? win.layoutCardY + win.layoutCardH - height : win.layoutCardY)
+                                     : win.cardBottom - height
+            width: win.smartLayoutActive ? win.layoutCardW : parent.width - x - Math.round(6 * win.s)
             height: win.cardHeight
             radius: Math.round(16 * win.s * config.radiusScale)
             color: appTheme.panel
@@ -301,7 +363,7 @@ Window {
             visible: opacity > 0.001
             // Folding turns the card around the sprite's centre and pulls it in (see foldSeq).
             readonly property real spriteOriginX: sprite.x + sprite.width / 2 - panel.x
-            readonly property real spriteOriginY: panel.height - sprite.height / 2
+            readonly property real spriteOriginY: sprite.y + sprite.height / 2 - panel.y   // = panel.height - sprite.height / 2 when the sprite sits on the card's bottom edge
             transform: [
                 Translate { id: panelShift; y: 0 },
                 Rotation {
@@ -325,6 +387,8 @@ Window {
             }
             // Keep the click mask in sync with what is actually drawn, every frame of the animation.
             onHeightChanged: win.updateInputRegion()
+            onYChanged: win.updateInputRegion()
+            onXChanged: win.updateInputRegion()
 
             ColumnLayout {
                 anchors.fill: parent
@@ -538,7 +602,8 @@ Window {
             summonRing.opacity = 0; win.panelFade = 1; panelShift.y = 0
             return
         }
-        summonBleed = bleedMax              // open with room around the mascot ...
+        // The bleed slides the sprite across the screen while it shrinks; smart positioning keeps it where it is.
+        summonBleed = win.smartPlacement ? 0 : bleedMax   // open with room around the mascot ...
         summonAnim.restart()                // ... which the animation takes back
         for (let i = 0; i < sparkles.count; ++i)
             sparkles.itemAt(i).play()

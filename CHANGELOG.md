@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Overlay
+- Smart Chatbox Positioning (qute-settings > General > Window, on by default): opening the overlay or restoring the
+  minimized card no longer moves the sprite. The chatbox goes around the sprite instead: top-right when it fits,
+  otherwise above, below or to the left, whichever has the most room, using the real card size, the monitor's work
+  area and the sprite's rectangle. Turning the setting off restores the previous placement exactly.
 - Dragging across a reply to select text no longer scrolls the chat list at the same time. Dragging past the top or
   bottom edge of the chat scrolls it, and the selection keeps growing as the text scrolls into view.
 - The prompt box grows to two lines; longer text scrolls inside the box with the mouse wheel and a scrollbar.

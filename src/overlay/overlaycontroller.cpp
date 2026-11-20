@@ -13,6 +13,7 @@
 #include <QGuiApplication>
 #include <QProcess>
 #include <QQuickWindow>
+#include <QRect>
 #include <QRegion>
 
 OverlayController::OverlayController(PlatformShell *shell, AppConfig *config, QObject *parent)
@@ -51,6 +52,21 @@ void OverlayController::setInputRegion(int x, int y, int w, int h)
     if (!m_window)
         return;
     m_window->setMask(w > 0 && h > 0 ? QRegion(x, y, w, h) : QRegion());
+}
+
+void OverlayController::setInputRects(const QVariantList &rects)
+{
+    if (!m_window)
+        return;
+    QRegion region;
+    for (const QVariant &v : rects) {
+        const QVariantMap m = v.toMap();
+        const int w = m.value(QStringLiteral("w")).toInt();
+        const int h = m.value(QStringLiteral("h")).toInt();
+        if (w > 0 && h > 0)
+            region += QRect(m.value(QStringLiteral("x")).toInt(), m.value(QStringLiteral("y")).toInt(), w, h);
+    }
+    m_window->setMask(region);                       // an empty region clears the mask
 }
 
 void OverlayController::resizeToContent(int contentHeight, int dropRoom)
