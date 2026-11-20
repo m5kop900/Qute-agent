@@ -28,13 +28,16 @@ mypack/
 - `{variant}` in `file` is replaced by the selected variant; if the variant is unknown the first one is used.
 - Color variants are pre-rendered files (hue-shifted). Keep the sprite readable on light AND dark backgrounds.
 
-## Built-in packs (M7) - all 4 are complete
+## Built-in packs - all are complete
 | id | character | notes |
 |---|---|---|
 | `qute` | little ghost (original design) | per-state body colors (blue/purple/teal/yellow/orange/red/gray) |
 | `blob` | squishy slime | squash & stretch, flat bottom, ground shadow |
 | `bot` | tiny robot | screen face, antenna light that changes color per state, swinging arms |
 | `cat` | round cat | ears twitch, paw raised when waiting |
+| `sakura` `aoi` `midori` `yuki` `luna` `akane` `hikari` | chibi anime girls (pink magical girl, blue school girl, green gamer, silver ice princess, violet witch, orange tsundere, blonde ojou) | single color each, no variants; hands on head when erroring, waving when waiting |
+
+The 4 original packs have 5 color variants; the anime girls are **single-color flat packs** (`"variants": []`, sheets directly in the pack folder, `file: "idle.png"`), so the Color variant box is greyed out for them and the user's color choice is kept when switching back.
 
 Every built-in pack defines ALL 7 states (`idle thinking working waiting done error offline`), 6 frames each, 256x256 frames,
 and the SAME 5 variant names (`ocean mint grape rose amber`) so the user's color choice survives switching characters.
@@ -51,9 +54,17 @@ Only the body carries the variant color; eyes, props and badges are drawn on a s
 | error | X eyes, shaking, red "!" badge, sweat drop |
 | offline | dimmed, asleep, floating "Z"s |
 
+## Frame rate
+`fps` in the manifest is the pack's default. The overlay plays it 1.6x faster (idle/offline are capped at 12 fps).
+The user can set an exact frame rate (1-60) for each of the 7 animations of each pack in qute-settings
+(Appearance > Sprite pack > Frame rate per animation). It is stored in `config.json` as
+`"spriteFps": { "<packId>/<state>": fps }`; a custom value is played exactly as set (no 1.6x, no cap) and the
+reset button / "Reset all frame rates" go back to the default. `packs.stateInfo(state)` returns `fps` (manifest),
+`displayFps` (what is played) and `custom`.
+
 ## Tools (dev only, need Pillow; the app itself never needs Python)
-- `python3 tools/gen_packs.py [pack ...]` regenerates the built-in packs (draws every frame in code; ~30 s for all four).
-  To add a character: write `build_<name>(state, t) -> (body_layer, top_layer, ground_y|None)` and register it in `CHARACTERS`.
+- `python3 tools/gen_packs.py [pack ...]` regenerates the built-in packs (draws every frame in code; ~1-2 min for all).
+  To add a single-color character set `"variants": None` in its `CHARACTERS` entry (the anime girls are data-driven via `GIRLS`). To add a character: write `build_<name>(state, t) -> (body_layer, top_layer, ground_y|None)` and register it in `CHARACTERS`.
 - `python3 tools/validate_packs.py` checks manifests, all states/variants, sheet sizes, alpha, corners. Exit code 1 on problems.
 - `tests/tst_spritepacks.cpp` runs the same rules inside `ctest`.
 

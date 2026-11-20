@@ -1,0 +1,57 @@
+{
+  "id": "yuki",
+  "name": "Yuki",
+  "description": "Silver-haired, cool and quiet.",
+  "author": "Qute Agent project",
+  "license": "CC0-1.0",
+  "version": 2,
+  "frame": {
+    "width": 256,
+    "height": 256
+  },
+  "variants": [],
+  "states": {
+    "idle": {
+      "file": "idle.png",
+      "frames": 6,
+      "fps": 6
+    },
+    "thinking": {
+      "file": "thinking.png",
+      "frames": 6,
+      "fps": 8
+    },
+    "working": {
+      "file": "working.png",
+      "frames": 6,
+      "fps": 10
+    },
+    "waiting": {
+      "file": "waiting.png",
+      "frames": 6,
+      "fps": 6
+    },
+    "done": {
+      "file": "done.png",
+      "frames": 6,
+      "fps": 8
+    },
+    "error": {
+      "file": "error.png",
+      "frames": 6,
+      "fps": 8
+    },
+    "offline": {
+      "file": "offline.png",
+      "frames": 6,
+      "fps": 4
+    }
+  },
+  "fallback": {
+    "working": "thinking",
+    "waiting": "thinking",
+    "error": "idle",
+    "offline": "idle",
+    "done": "idle"
+  }
+}

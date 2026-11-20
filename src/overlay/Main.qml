@@ -31,7 +31,8 @@ Window {
     property real panelFade: 1
     property real foldSpin: 0          // the card twists a little while it folds into the sprite
     readonly property int spriteSize: Math.round(128 * s)
-    readonly property int fullWidth: Math.round(560 * s)
+    // Card width: the "Overlay width" setting in qute-settings (560 px at scale 1.0 by default).
+    readonly property int fullWidth: Math.round(config.overlayWidth * s)
     // The window is the sprite alone while minimized (windowFolded): then the shell gets these sizes instead of the card's.
     property int cardW: fullWidth
     property bool windowFolded: false
@@ -135,6 +136,11 @@ Window {
             top = Math.min(top, Math.floor(listTop))
             bottom = Math.max(bottom, Math.ceil(listBottom))
         }
+        if (composer.menuOpen) {
+            // The prompt box's right-click menu opens at the pointer and can hang below the card.
+            top = Math.min(top, Math.floor(composer.menuTop))
+            bottom = Math.max(bottom, Math.ceil(composer.menuBottom))
+        }
         top = Math.max(0, Math.round(top))
         bottom = Math.min(Math.round(bottom), win.height)
         controller.setInputRegion(0, top, win.width, bottom - top)
@@ -154,6 +160,7 @@ Window {
         target: composer
         function onListOpenChanged() { win.updateInputRegion() }
         function onListPixelHeightChanged() { win.updateInputRegion() }
+        function onMenuOpenChanged() { win.updateInputRegion() }
     }
 
     Connections {

@@ -135,6 +135,16 @@ QVariantList AttachmentModel::listDirectory(const QString &dirPath) const
     return out;
 }
 
+QString AttachmentModel::homeDirectory() const
+{
+    return QDir::homePath();
+}
+
+bool AttachmentModel::isDirectory(const QString &path) const
+{
+    return QFileInfo(path).isDir();
+}
+
 QString AttachmentModel::defaultDirectory() const
 {
     const QString work = m_config ? m_config->workDir() : QString();

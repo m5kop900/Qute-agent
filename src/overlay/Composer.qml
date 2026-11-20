@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 
 // The Ask Qute prompt: a single rounded input surface plus the attach and send buttons. The agent-mode,
 // model and reasoning-effort controls live in the top menu strip (MenuStrip), not here.
@@ -11,7 +12,6 @@ import QtQuick.Layouts
 //   "sessions" - /sessions: the session list
 //   "agents"   - /agents: the primary agents (build, plan, ...)
 //   "models"   - /models: the models the server offers
-//   "files"    - the "+" button: an in-app file browser (folders, and only the file types Qute can send)
 Item {
     id: root
     property var theme
@@ -30,7 +30,6 @@ Item {
     property var sessionItems: []
     property var pickerItems: []             // items of the /agents, /models and file lists
     property var files: null                 // the attachments model (listDirectory, defaultDirectory, addFile)
-    property string browsePath: ""           // folder shown by the file browser
     property string currentSessionKey: ""
     property string listKind: ""
     property int listIndex: 0
@@ -43,11 +42,10 @@ Item {
     readonly property string typedCommand: input.text.charAt(0) === "/" ? input.text.slice(1) : ""
     // Lists that pick one item and send the choice to Main (no typing into the box).
     readonly property bool pickerOpen: listKind === "sessions" || listKind === "agents" || listKind === "models"
-                                       || listKind === "files"
     readonly property var visibleItems: {
         if (listKind === "sessions")
             return sessionItems
-        if (listKind === "agents" || listKind === "models" || listKind === "files")
+        if (listKind === "agents" || listKind === "models")
             return pickerItems
         if (listKind === "commands")
             return tools ? tools.filterSlash(commandItems, typedCommand) : []
@@ -131,14 +129,7 @@ Item {
         // Placeholder rows ("Loading…", "No supported files here") are not choices.
         if (String(item.kind) === "loading" || String(item.kind) === "none")
             return
-        if (kind === "files") {
-            if (String(item.kind) === "dir") {
-                browseTo(String(item.key))
-            } else {
-                // The list stays open, so several files can be picked one after another (Esc closes it).
-                listPicked("attach", String(item.key))
-            }
-        } else if (kind === "commands") {
+        if (kind === "commands") {
             input.text = ""          // the command runs; Main decides what happens next
             listKind = ""
             commandsDismissed = false
@@ -173,20 +164,63 @@ Item {
         listIndex = (listIndex + delta + n) % n
     }
 
-    // The "+" button: a browser inside the overlay. It lists folders and the file types Qute can send.
-    function browseTo(dir) {
-        browsePath = dir
-        pickerItems = files ? files.listDirectory(dir) : []
-        currentSessionKey = ""
-        listKind = "files"
-        listIndex = 0
-    }
-
+    // The "+" button: the file manager window, opened at the working folder. A second press closes it.
     function openFilePicker() {
         if (!root.enabled || !files)
             return
-        browseTo(files.defaultDirectory())
-        input.forceActiveFocus()
+        if (fileManager.visible) {
+            fileManager.close()
+            return
+        }
+        fileManager.openAt(files.defaultDirectory())
+    }
+
+    // The desktop's own file dialog, for files outside the file manager (its "Other location" link).
+    function openSystemDialog() {
+        pickDialog.open()
+    }
+
+    // Geometry of the open right-click menu, for the window's click mask (Main): the menu can hang below the card.
+    readonly property bool menuOpen: inputMenu.visible
+    readonly property real menuTop: inputMenu.y
+    readonly property real menuBottom: inputMenu.y + inputMenu.height
+
+    // Right-click menu of the prompt box.
+    ThemedMenu {
+        id: inputMenu
+        theme: root.theme
+        s: root.s
+        actions: [
+            {text: qsTr("Undo"), enabled: input.canUndo, shortcut: "Ctrl+Z", run: function () { input.undo() }},
+            {text: qsTr("Redo"), enabled: input.canRedo, shortcut: "Ctrl+Shift+Z", run: function () { input.redo() }},
+            {separator: true},
+            {text: qsTr("Cut"), enabled: input.selectedText !== "", shortcut: "Ctrl+X", run: function () { input.cut() }},
+            {text: qsTr("Copy"), enabled: input.selectedText !== "", shortcut: "Ctrl+C", run: function () { input.copy() }},
+            {text: qsTr("Paste"), enabled: input.canPaste, shortcut: "Ctrl+V", run: function () { input.paste() }},
+            {text: qsTr("Delete"), enabled: input.selectedText !== "", run: function () { input.remove(input.selectionStart, input.selectionEnd) }},
+            {separator: true},
+            {text: qsTr("Select all"), enabled: input.length > 0, shortcut: "Ctrl+A", run: function () { input.selectAll() }}
+        ]
+    }
+
+    // The file manager is its own window, centred on the screen; Attach hands the picked files over here.
+    FileManager {
+        id: fileManager
+        theme: root.theme
+        s: root.s
+        files: root.files
+        transientParent: Window.window
+        onAttachRequested: function (paths) {
+            for (let i = 0; i < paths.length; ++i) {
+                const err = root.files.addFile(String(paths[i]))
+                if (err !== "")
+                    conversation.addNotice(err)
+            }
+        }
+        onSystemDialogRequested: {
+            close()
+            root.openSystemDialog()
+        }
     }
 
     // Files dropped on the box become attachments (F1.1).
@@ -200,12 +234,21 @@ Item {
 
     // Geometry of the open list, for the window's click mask (Main): the list hangs below the prompt box.
     readonly property real listTop: box.height + Math.round(6 * s)
-    readonly property real listPixelHeight: listOpen ? list.height : 0
+    readonly property real listPixelHeight: listOpen ? list.implicitHeight : 0
 
     readonly property bool hasText: input.text.trim().length > 0
     readonly property bool engaged: input.activeFocus
 
-    implicitHeight: Math.round(78 * s)
+    // The prompt box grows with its text up to maxLines lines; past that the text scrolls inside the box
+    // (the TextArea sits in a ScrollView, and the cursor is kept in view while typing).
+    readonly property int maxLines: 4
+    TextMetrics { id: lineMetrics; font: input.font; text: "Mg" }
+    readonly property int inputMinH: Math.round(38 * s)
+    readonly property int inputMaxH: Math.max(inputMinH,
+                                              Math.ceil(maxLines * lineMetrics.height + input.topPadding * 2 + 2 * s))
+    readonly property int inputH: Math.min(inputMaxH,
+                                           Math.max(inputMinH, Math.ceil(input.contentHeight + input.topPadding * 2 + 2 * s)))
+    implicitHeight: Math.round(78 * s) - inputMinH + inputH
 
     function focusInput() {
         input.forceActiveFocus()
@@ -239,9 +282,11 @@ Item {
         enter: Transition {}
         exit: Transition {}
         visible: root.listOpen
+        height: root.listPixelHeight
         InlineList {
             id: list
             width: parent.width
+            height: implicitHeight
             theme: root.theme
             s: root.s
             items: root.visibleItems
@@ -270,6 +315,24 @@ Item {
             anchors.fill: parent
             onDropped: function (drop) { root.attachUrls(drop.urls) }
         }
+
+        // Clicks on the box that miss the text (the padding, the gap between the buttons) still belong to the
+        // prompt: a left click focuses it with the caret at the end, a right click opens the themed menu.
+        TapHandler {
+            acceptedButtons: Qt.LeftButton
+            enabled: root.enabled
+            onTapped: {
+                input.forceActiveFocus()
+                input.cursorPosition = input.length
+            }
+        }
+        TapHandler {
+            acceptedButtons: Qt.RightButton
+            onTapped: function (eventPoint) {
+                input.forceActiveFocus()
+                inputMenu.openAt(box, eventPoint.position.x, eventPoint.position.y)
+            }
+        }
     }
 
     ColumnLayout {
@@ -277,10 +340,26 @@ Item {
         anchors.margins: Math.round(7 * s)
         spacing: Math.round(3 * s)
 
+        ScrollView {
+            id: inputScroll
+            Layout.fillWidth: true
+            Layout.preferredHeight: root.inputH
+            clip: true
+            contentWidth: availableWidth
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            ScrollBar.vertical: ScrollBar {
+                id: vbar
+                policy: ScrollBar.AsNeeded
+                implicitWidth: Math.round(5 * root.s)
+                contentItem: Rectangle {
+                    implicitWidth: Math.round(4 * root.s)
+                    radius: width / 2
+                    color: Qt.rgba(root.theme.text.r, root.theme.text.g, root.theme.text.b, vbar.pressed ? 0.45 : 0.25)
+                }
+            }
+
         TextArea {
             id: input
-            Layout.fillWidth: true
-            Layout.preferredHeight: Math.round(38 * s)
             enabled: root.enabled
             placeholderText: root.enabled ? qsTr("Ask qute…") : root.offText
             placeholderTextColor: root.theme.textDim
@@ -290,11 +369,20 @@ Item {
             font.pixelSize: Math.round(13.5 * s)
             wrapMode: TextArea.Wrap
             selectByMouse: true
-            clip: true
             background: null
             padding: 0
             leftPadding: Math.round(3 * s)
+            rightPadding: Math.round(8 * s)
             topPadding: Math.round(1 * s)
+
+            // Qt 6.9+: the control style gives TextArea its own context menu through this attached property, and
+            // it opens next to ours. Setting it to null removes that one; requested() still fires, and the
+            // themed menu opens from it.
+            ContextMenu.menu: null
+            ContextMenu.onRequested: function (position) {
+                input.forceActiveFocus()
+                inputMenu.openAt(input, position.x, position.y)
+            }
 
             onTextChanged: root.refreshText()
             onCursorPositionChanged: if (root.listKind !== "commands" && !root.pickerOpen) root.updateMention()
@@ -347,13 +435,14 @@ Item {
                     controller.hide()
             }
         }
+        }
 
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: Math.round(22 * s)
             spacing: Math.round(6 * s)
 
-            // Attach files (F1.1): opens the file dialog; drag & drop works too.
+            // Attach files (F1.1): opens the system file dialog; drag & drop works too.
             Rectangle {
                 id: attachButton
                 Layout.preferredWidth: Math.round(22 * root.s)

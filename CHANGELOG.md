@@ -3,6 +3,15 @@
 ## Unreleased
 
 ### Overlay
+- Dragging across a reply to select text no longer scrolls the chat list at the same time. Dragging past the top or
+  bottom edge of the chat scrolls it, and the selection keeps growing as the text scrolls into view.
+- The prompt box grows to two lines; longer text scrolls inside the box with the mouse wheel and a scrollbar.
+- Right-clicking the prompt box opens a themed menu (Undo, Redo, Cut, Copy, Paste, Select all) with shortcut hints.
+- The "+" button opens a file manager window, centred on the screen: places (Home, working folder, Desktop, Documents,
+  Downloads, Computer), a breadcrumb path, search, and the files Qute can send. Click to add or remove a file from the selection,
+  Shift+click for a range, "Select all" for the folder, double-click a folder to open it, Enter or Attach to add the selection. "Other location…" opens the system dialog.
+
+### Overlay
 - Minimize: the "–" at the top right of the card folds the card into the sprite, so only the sprite stays on screen
   and clicks pass through everywhere else. Double-click the sprite to open the card again (animated both ways).
   A permission request or question from opencode opens a folded card automatically.
@@ -13,6 +22,14 @@
   around the sprite and it can be dragged anywhere. Opening grows the window back, keeping the prompt box in place.
 - Level 2 card height is editable in qute-settings (Overlay > Long reply height, 300–1000 px, default 430).
 - Dragging the sprite starts only when the pointer moves, so a plain click or double-click is not turned into a move.
+- Overlay width is editable in qute-settings (Overlay > Overlay width, 380–1000 px, default 560), scaled with the UI scale.
+- The "+" button next to the prompt opens the system file dialog (the desktop's own file manager), filtered to the file
+  types Qute can send, instead of the in-app list. Files refused by the dialog are reported in the chat.
+- Right-click on a message bubble (anywhere on it, padding included) offers "Copy message".
+- Text selection in a reply runs across the whole message: a drag can start in text above a code block, pass through
+  the block and end in the text below it. Right-click copies the selection, or the whole message when nothing is selected.
+- The prompt box grows with multi-line text (up to about six lines), then the text scrolls inside it.
+- Right-click menus stay inside the overlay window instead of running past its right or bottom edge.
 
 ### Installer
 - install.sh checks the cmake version (3.21 or newer) before configuring, and says what to do when Qt is missing.

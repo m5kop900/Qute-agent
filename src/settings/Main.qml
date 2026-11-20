@@ -50,9 +50,24 @@ ApplicationWindow {
     Connections {                       // keep the sprite preview in sync; any edit makes the form dirty
         target: config
         function onChanged() {
+            packs.setFpsOverrides(config.spriteFps)
             packs.load(config.packId, config.variant)
             win.dirty = true
         }
+    }
+
+    // Frame rate per animation, stored per pack ("<packId>/<state>"); no key = the pack default.
+    function setSpriteFps(state, fps) {
+        const m = Object.assign({}, config.spriteFps)
+        m[config.packId + "/" + state] = fps
+        config.spriteFps = m
+    }
+    function resetSpriteFps(state) {                      // state === "" resets every animation of the current pack
+        const m = Object.assign({}, config.spriteFps)
+        for (const k of Object.keys(m))
+            if (state === "" ? k.startsWith(config.packId + "/") : k === config.packId + "/" + state)
+                delete m[k]
+        config.spriteFps = m
     }
 
     // ---- navigation ------------------------------------------------------------------------------------
@@ -414,6 +429,15 @@ ApplicationWindow {
                                 }
                                 Label { text: config.scale.toFixed(2) + "x" }
 
+                                Label { text: qsTr("Overlay width") }
+                                Slider {
+                                    Layout.fillWidth: true
+                                    from: 380; to: 1000; stepSize: 10
+                                    value: config.overlayWidth
+                                    onMoved: config.overlayWidth = Math.round(value)
+                                }
+                                Label { text: config.overlayWidth + " px" }
+
                                 Label { text: qsTr("Long reply height") }
                                 Slider {
                                     Layout.fillWidth: true
@@ -479,7 +503,7 @@ ApplicationWindow {
                                             frameCount: info.frames
                                             frameWidth: packs.frameWidth
                                             frameHeight: packs.frameHeight
-                                            frameRate: info.fps
+                                            frameRate: info.displayFps
                                             running: true
                                         }
                                     }
@@ -507,6 +531,7 @@ ApplicationWindow {
                                         ComboBox {
                                             Layout.fillWidth: true
                                             model: packs.variantsOf(config.packId)
+                                            enabled: count > 0          // single-color packs have no variants
                                             currentIndex: Math.max(0, model.indexOf(config.variant))
                                             onActivated: (i) => config.variant = model[i]
                                         }
@@ -554,6 +579,53 @@ ApplicationWindow {
                                             validationDialog.open()
                                         }
                                     }
+                                    Item { Layout.fillWidth: true }
+                                }
+
+                                Label { text: qsTr("Frame rate per animation"); font.bold: true }
+                                GridLayout {
+                                    Layout.fillWidth: true
+                                    columns: 2
+                                    columnSpacing: 18
+                                    rowSpacing: 4
+                                    Repeater {
+                                        model: [
+                                            { key: "idle", label: qsTr("Idle") }, { key: "thinking", label: qsTr("Thinking") },
+                                            { key: "working", label: qsTr("Working") }, { key: "waiting", label: qsTr("Waiting") },
+                                            { key: "done", label: qsTr("Done") }, { key: "error", label: qsTr("Error") },
+                                            { key: "offline", label: qsTr("Offline") }
+                                        ]
+                                        delegate: RowLayout {
+                                            id: fpsRow
+                                            required property var modelData
+                                            readonly property var info: (packs.revision, packs.stateInfo(modelData.key))
+                                            Layout.fillWidth: true
+                                            spacing: 8
+                                            Label { text: fpsRow.modelData.label; Layout.preferredWidth: 76 }
+                                            SpinBox {
+                                                id: fpsSpin
+                                                from: 1; to: 60
+                                                onValueModified: win.setSpriteFps(fpsRow.modelData.key, value)
+                                            }
+                                            Binding {                       // follows the pack / reset, even after the user typed
+                                                target: fpsSpin; property: "value"
+                                                value: Math.round(fpsRow.info.displayFps)
+                                            }
+                                            Label { text: qsTr("fps"); color: theme.textDim }
+                                            Button {
+                                                text: "\u21ba"
+                                                flat: true
+                                                enabled: fpsRow.info.custom
+                                                ToolTip.visible: hovered
+                                                ToolTip.text: qsTr("Back to the pack default")
+                                                onClicked: win.resetSpriteFps(fpsRow.modelData.key)
+                                            }
+                                            Item { Layout.fillWidth: true }
+                                        }
+                                    }
+                                }
+                                RowLayout {
+                                    Button { text: qsTr("Reset all frame rates"); onClicked: win.resetSpriteFps("") }
                                     Item { Layout.fillWidth: true }
                                 }
 

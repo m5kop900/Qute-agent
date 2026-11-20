@@ -54,6 +54,22 @@ private slots:
         QCOMPARE(c.themeMode(), QStringLiteral("system"));
     }
 
+    void spriteFpsRoundTripsAndIsClamped()
+    {
+        {
+            AppConfig c;
+            c.setSpriteFps({{"sakura/idle", 8}, {"sakura/working", 999}, {"cat/error", 0}, {"bad-key", 5}, {"cat/done", "x"}});
+            QCOMPARE(c.spriteFps().value("sakura/working").toInt(), 60);     // clamped to 1..60
+            QCOMPARE(c.spriteFps().value("cat/error").toInt(), 1);
+            QVERIFY(!c.spriteFps().contains("bad-key"));                      // not "<pack>/<state>"
+            QVERIFY(!c.spriteFps().contains("cat/done"));                     // not a number
+            QVERIFY(c.save());
+        }
+        AppConfig again;
+        QCOMPARE(again.spriteFps().value("sakura/idle").toInt(), 8);
+        QCOMPARE(again.spriteFps().size(), 3);
+    }
+
     void appearanceRoundTrips()
     {
         {
@@ -103,6 +119,18 @@ private slots:
         QCOMPARE(c.longCardHeight(), 1000);
         c.setLongCardHeight(520);
         QCOMPARE(c.longCardHeight(), 520);
+    }
+
+    void overlayWidthIsClamped()
+    {
+        AppConfig c;
+        QCOMPARE(c.overlayWidth(), 560);            // default: the card width of earlier releases
+        c.setOverlayWidth(100);
+        QCOMPARE(c.overlayWidth(), 380);
+        c.setOverlayWidth(5000);
+        QCOMPARE(c.overlayWidth(), 1000);
+        c.setOverlayWidth(700);
+        QCOMPARE(c.overlayWidth(), 700);
     }
 
     void unknownKeysSurviveASave()

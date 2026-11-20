@@ -24,6 +24,7 @@ int main(int argc, char *argv[])
     if (style != QLatin1String("system"))
         QQuickStyle::setStyle(style == QLatin1String("custom") ? QStringLiteral("Basic") : style);
     SpritePackManager packs;
+    packs.setFpsOverrides(config.spriteFps());
     packs.load(config.packId(), config.variant());
     Theme theme(&config);
     OverlayControl overlay;              // restart the running overlay after saving

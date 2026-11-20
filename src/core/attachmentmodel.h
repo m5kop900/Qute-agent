@@ -43,6 +43,8 @@ public:
     // A ".." entry leads to the parent folder. Unreadable folders give an empty list plus a "none" placeholder.
     Q_INVOKABLE QVariantList listDirectory(const QString &dir) const;
     Q_INVOKABLE QString defaultDirectory() const;                          // the working folder, or home
+    Q_INVOKABLE QString homeDirectory() const;                             // the user's home folder
+    Q_INVOKABLE bool isDirectory(const QString &path) const;               // for the file manager's places
     Q_INVOKABLE QString addMention(const QString &relativePath, const QString &baseDir);   // "@" picker
     Q_INVOKABLE QString pasteClipboardImage();                             // Ctrl+V with an image
     QString attachImage(const QImage &image, const QString &name = QString());

@@ -1,6 +1,0 @@
-module Qute.Settings
-typeinfo qute_settings.qmltypes
-prefer :/qt/qml/Qute/Settings/
-AnimatedSprite 1.0 AnimatedSprite.qml
-Main 1.0 Main.qml
-

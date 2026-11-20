@@ -33,10 +33,14 @@ class TstSpritePacks : public QObject {
 private slots:
     void atLeastFourPacksWithFiveVariants()
     {
-        const QStringList dirs = packDirs();
-        QVERIFY2(dirs.size() >= 4, qPrintable(QString("found %1 packs").arg(dirs.size())));
-        for (const QString &d : dirs)
-            QVERIFY2(manifestOf(d).value("variants").toArray().size() >= 5, qPrintable(d));
+        // Packs either have >= 5 color variants or are single-color (flat layout, "variants": []).
+        int multi = 0;
+        for (const QString &d : packDirs()) {
+            const int n = manifestOf(d).value("variants").toArray().size();
+            QVERIFY2(n == 0 || n >= 5, qPrintable(d));
+            if (n > 0) ++multi;
+        }
+        QVERIFY2(multi >= 4, qPrintable(QString("found %1 packs with color variants").arg(multi)));
     }
     void everyPackIsCompleteAndSheetsHaveTheRightSize()
     {
@@ -51,7 +55,9 @@ private slots:
                 const QJsonObject info = states.value(state).toObject();
                 const int frames = info.value("frames").toInt();
                 QVERIFY2(frames >= 1 && info.value("fps").toInt() >= 1, qPrintable(dir + " " + state));
-                for (const QJsonValue &v : m.value("variants").toArray()) {
+                QJsonArray vs = m.value("variants").toArray();
+                if (vs.isEmpty()) vs.append(QString());                    // flat single-color pack
+                for (const QJsonValue &v : vs) {
                     QString file = info.value("file").toString();
                     file.replace("{variant}", v.toString());
                     const QImage img(dir + "/" + file);
@@ -69,6 +75,7 @@ private slots:
         QJsonArray ref;
         for (const QString &dir : packDirs()) {
             const QJsonArray v = manifestOf(dir).value("variants").toArray();
+            if (v.isEmpty()) continue;                                      // single-color packs are exempt
             if (ref.isEmpty()) ref = v;
             QVERIFY2(v == ref, qPrintable(dir + ": variants differ from the other packs"));
         }
@@ -84,6 +91,23 @@ private slots:
         // unknown variant -> first variant; unknown state -> idle
         QVERIFY(mgr.load("bot", "does-not-exist"));
         QVERIFY(mgr.stateInfo("no-such-state").value("source").toUrl().toLocalFile().endsWith("ocean/idle.png"));
+    }
+    void userFpsOverridesOneAnimationOnly()
+    {
+        SpritePackManager mgr;
+        QVERIFY(mgr.load("sakura", ""));
+        const QVariantMap before = mgr.stateInfo("thinking");
+        QVERIFY(!before.value("custom").toBool());
+        QVERIFY(before.value("displayFps").toDouble() > before.value("fps").toDouble());   // default = boosted
+
+        mgr.setFpsOverrides({{"sakura/working", 24}, {"cat/thinking", 3}});
+        QVERIFY(mgr.load("sakura", ""));
+        const QVariantMap working = mgr.stateInfo("working");
+        QVERIFY(working.value("custom").toBool());
+        QCOMPARE(working.value("displayFps").toDouble(), 24.0);
+        QCOMPARE(working.value("fps").toInt(), 10);                                        // pack value stays visible
+        QVERIFY(!mgr.stateInfo("thinking").value("custom").toBool());                     // other state and other pack untouched
+        QCOMPARE(mgr.stateInfo("thinking").value("displayFps").toDouble(), before.value("displayFps").toDouble());
     }
     void validationAcceptsEveryBuiltInPack()
     {

@@ -132,6 +132,28 @@ ListView {
                             border.width: 1
                             border.color: Qt.rgba(view.theme.accent.r, view.theme.accent.g, view.theme.accent.b, 0.35)
 
+                            // Right-click anywhere on the bubble, the padding included, copies the whole message.
+                            // Right-click on the text itself opens the text's own menu (Copy / Select all).
+                            MouseArea {
+                                id: bubbleArea
+                                anchors.fill: parent
+                                acceptedButtons: Qt.RightButton
+                                onClicked: function (mouse) { bubbleMenu.openAt(bubbleArea, mouse.x, mouse.y) }
+                            }
+
+                            ThemedMenu {
+                                id: bubbleMenu
+                                theme: view.theme
+                                s: view.s
+                                actions: [
+                                    {text: qsTr("Copy message"), enabled: true, run: function () {
+                                        userText.selectAll()
+                                        userText.copy()
+                                        userText.deselect()
+                                    }}
+                                ]
+                            }
+
                             SelectableText {
                                 id: userText
                                 x: Math.round(10 * view.s)
@@ -205,6 +227,36 @@ ListView {
                             border.width: 1
                             border.color: view.theme.border
 
+                            // Right-click on the reply's bubble (padding included) copies the whole reply text.
+                            // The reply is several text parts, so the copy goes through a hidden helper holding the text.
+                            MouseArea {
+                                id: asstArea
+                                anchors.fill: parent
+                                acceptedButtons: Qt.RightButton
+                                onClicked: function (mouse) { asstMenu.openAt(asstArea, mouse.x, mouse.y) }
+                            }
+
+                            TextEdit {
+                                id: asstCopyHelper
+                                width: 0
+                                height: 0
+                                opacity: 0
+                                readOnly: true
+                                text: model.text
+                            }
+
+                            ThemedMenu {
+                                id: asstMenu
+                                theme: view.theme
+                                s: view.s
+                                actions: [
+                                    {text: qsTr("Copy message"), enabled: true, run: function () {
+                                        asstCopyHelper.selectAll()
+                                        asstCopyHelper.copy()
+                                    }}
+                                ]
+                            }
+
                             MessageText {
                                 id: asstText
                                 x: Math.round(10 * view.s)
@@ -213,6 +265,7 @@ ListView {
                                 text: model.text
                                 theme: view.theme
                                 s: view.s
+                                scrollView: view
                                 onLinkActivated: (link) => Qt.openUrlExternally(link)
                             }
                         }
@@ -553,6 +606,7 @@ ListView {
                                     text: model.text
                                     theme: view.theme
                                     s: view.s
+                                    scrollView: view
                                     onLinkActivated: (link) => Qt.openUrlExternally(link)
                                 }
                             }

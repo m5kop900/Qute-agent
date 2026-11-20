@@ -99,6 +99,7 @@ bool SpritePackManager::load(const QString &packId, const QString &variant)
         variants << v.toString();
 
     m_dir = dir;
+    m_id = m.value("id").toString(packId);
     m_manifest = m;
     m_name = m.value("name").toString();
     m_variant = variants.contains(variant) ? variant : (variants.isEmpty() ? QString() : variants.first());
@@ -112,7 +113,7 @@ bool SpritePackManager::load(const QString &packId, const QString &variant)
 QVariantMap SpritePackManager::stateInfo(const QString &stateName) const
 {
     if (m_manifest.isEmpty())
-        return {{"source", QUrl()}, {"frames", 1}, {"fps", 1}};
+        return {{"source", QUrl()}, {"frames", 1}, {"fps", 1}, {"displayFps", 1.0}, {"custom", false}};
 
     const QJsonObject states = m_manifest.value("states").toObject();
     const QJsonObject fallback = m_manifest.value("fallback").toObject();
@@ -124,10 +125,24 @@ QVariantMap SpritePackManager::stateInfo(const QString &stateName) const
     const QJsonObject s = states.value(name).toObject();
     QString file = s.value("file").toString();
     file.replace(QStringLiteral("{variant}"), m_variant);
+    // What is really played. Defaults: every pack runs 1.6x faster than its manifest says and idle/offline never
+    // exceed 12 fps. A user value (AppConfig::spriteFps) is used exactly as set, keyed by the REQUESTED state.
+    constexpr double kFpsBoost = 1.6;
+    constexpr double kCalmFpsCap = 12.0;
+    const int packFps = s.value("fps").toInt(8);
+    const QString key = m_id + QLatin1Char('/') + stateName;
+    const bool custom = m_fpsOverrides.contains(key);
+    double shown = packFps * kFpsBoost;
+    if (stateName == QLatin1String("idle") || stateName == QLatin1String("offline"))
+        shown = qMin(shown, kCalmFpsCap);
+    if (custom)
+        shown = qBound(1, m_fpsOverrides.value(key).toInt(), 60);
     return {
         {"source", QUrl::fromLocalFile(QDir(m_dir).filePath(file))},
         {"frames", s.value("frames").toInt(1)},
-        {"fps", s.value("fps").toInt(8)},
+        {"fps", packFps},
+        {"displayFps", shown},
+        {"custom", custom},
     };
 }
 

@@ -7,7 +7,8 @@
 #include <QVariantMap>
 
 // Finds and loads sprite packs (see docs/SPRITE_PACK.md for the on-disk format).
-// QML asks it: packs.stateInfo("thinking") -> { source: url, frames: int, fps: int }.
+// QML asks it: packs.stateInfo("thinking") -> { source, frames, fps (pack value), displayFps (what is really played:
+// the user's override, or the pack fps x 1.6, idle/offline capped at 12), custom (bool) }.
 class SpritePackManager : public QObject {
     Q_OBJECT
     Q_PROPERTY(int frameWidth READ frameWidth NOTIFY loaded)
@@ -30,6 +31,8 @@ public:
     Q_INVOKABLE bool load(const QString &packId, const QString &variant);
     Q_INVOKABLE QStringList variantsOf(const QString &packId) const;
     Q_INVOKABLE QVariantMap stateInfo(const QString &stateName) const;
+    // User frame rates, { "<packId>/<state>": fps } (AppConfig::spriteFps). Call before load().
+    Q_INVOKABLE void setFpsOverrides(const QVariantMap &overrides) { m_fpsOverrides = overrides; }
 
     // F7.2: user pack folder + validation. validatePack accepts a pack id or a directory path and
     // returns { ok, path, errors: [...], warnings: [...] }.
@@ -47,6 +50,8 @@ private:
 
     QVariantList m_packs;
     QString m_dir;
+    QString m_id;
+    QVariantMap m_fpsOverrides;
     QString m_variant;
     QString m_name;
     QJsonObject m_manifest;

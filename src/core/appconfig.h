@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QString>
 #include <QTimer>
+#include <QVariantMap>
 
 class QJsonObject;
 
@@ -37,12 +38,15 @@ class AppConfig : public QObject {
     Q_PROPERTY(int cornerRadius READ cornerRadius WRITE setCornerRadius NOTIFY changed)           // F7.2
     Q_PROPERTY(QString density READ density WRITE setDensity NOTIFY changed)                     // compact | normal | spacious
     Q_PROPERTY(int longCardHeight READ longCardHeight WRITE setLongCardHeight NOTIFY changed)     // px of the largest card level (level 2), 300..1000
+    Q_PROPERTY(int overlayWidth READ overlayWidth WRITE setOverlayWidth NOTIFY changed)           // px of the card width at scale 1.0, 380..1000
     Q_PROPERTY(double spacingScale READ spacingScale NOTIFY changed)                             // read-only, from density
     Q_PROPERTY(double radiusScale READ radiusScale NOTIFY changed)                               // read-only, from cornerRadius
     Q_PROPERTY(bool animations READ animations WRITE setAnimations NOTIFY changed)               // F7.2
     Q_PROPERTY(QString fontFamily READ fontFamily WRITE setFontFamily NOTIFY changed)            // "" = system UI font
     Q_PROPERTY(QString codeFontFamily READ codeFontFamily WRITE setCodeFontFamily NOTIFY changed) // "" = system monospace
     Q_PROPERTY(QString controlStyle READ controlStyle WRITE setControlStyle NOTIFY changed)      // custom | system | Fusion
+    // Per-animation frame rate chosen by the user: { "<packId>/<state>": fps (1..60) }. A missing key = the pack default.
+    Q_PROPERTY(QVariantMap spriteFps READ spriteFps WRITE setSpriteFps NOTIFY changed)
     // --- behavior ---
     Q_PROPERTY(bool placeAtCursor READ placeAtCursor WRITE setPlaceAtCursor NOTIFY changed)
     Q_PROPERTY(bool hideOnFocusLoss READ hideOnFocusLoss WRITE setHideOnFocusLoss NOTIFY changed)
@@ -82,6 +86,7 @@ public:
     QString accentColor() const { return m_accentColor; }
     double scale() const { return m_scale; }
     int longCardHeight() const { return m_longCardHeight; }
+    int overlayWidth() const { return m_overlayWidth; }
     double overlayOpacity() const { return m_overlayOpacity; }
     int cornerRadius() const { return m_cornerRadius; }
     QString density() const { return m_density; }
@@ -93,6 +98,7 @@ public:
     QString fontFamily() const { return m_fontFamily; }
     QString codeFontFamily() const { return m_codeFontFamily; }
     QString controlStyle() const { return m_controlStyle; }
+    QVariantMap spriteFps() const { return m_spriteFps; }
     bool placeAtCursor() const { return m_placeAtCursor; }
     int maxAttachmentSizeMB() const { return m_maxAttachmentSizeMB; }
     bool hideOnFocusLoss() const { return m_hideOnFocusLoss; }
@@ -118,6 +124,7 @@ public:
     void setOverlayOpacity(double v) { assign(m_overlayOpacity, qBound(0.3, v, 1.0)); }
     void setCornerRadius(int v) { assign(m_cornerRadius, qBound(0, v, 40)); }
     void setLongCardHeight(int v) { assign(m_longCardHeight, qBound(300, v, 1000)); }
+    void setOverlayWidth(int v) { assign(m_overlayWidth, qBound(380, v, 1000)); }
     void setDensity(const QString &v)
     {
         const QString d = (v == QLatin1String("normal") || v == QLatin1String("spacious"))
@@ -134,6 +141,17 @@ public:
         const QString s = (v == QLatin1String("system") || v == QLatin1String("Fusion"))
                               ? v : QStringLiteral("custom");
         assign(m_controlStyle, s);
+    }
+    void setSpriteFps(const QVariantMap &v)
+    {
+        QVariantMap clean;                       // keep only "<pack>/<state>" keys with a usable number
+        for (auto it = v.constBegin(); it != v.constEnd(); ++it) {
+            bool ok = false;
+            const int n = it.value().toInt(&ok);
+            if (ok && it.key().contains(QLatin1Char('/')))
+                clean.insert(it.key(), qBound(1, n, 60));
+        }
+        assign(m_spriteFps, clean);
     }
     void setPlaceAtCursor(bool v) { assign(m_placeAtCursor, v); }
     void setHideOnFocusLoss(bool v) { assign(m_hideOnFocusLoss, v); }
@@ -172,6 +190,7 @@ private:
     QString m_accentColor;
     double m_scale = 1.0;
     int m_longCardHeight = 430;
+    int m_overlayWidth = 560;
     double m_overlayOpacity = 1.0;
     int m_cornerRadius = 16;
     QString m_density = QStringLiteral("compact");
@@ -179,6 +198,7 @@ private:
     QString m_fontFamily;
     QString m_codeFontFamily;
     QString m_controlStyle = QStringLiteral("custom");
+    QVariantMap m_spriteFps;
     bool m_placeAtCursor = true;
     bool m_hideOnFocusLoss = false;
     bool m_autoCompactEnabled = true;

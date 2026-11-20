@@ -12,6 +12,7 @@ qt_add_qml_module(qute
         SpriteView.qml
         Composer.qml
         InlineList.qml
+        FileManager.qml
         MessageText.qml
         SelectableText.qml
         ThemedMenu.qml

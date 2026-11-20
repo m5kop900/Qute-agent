@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Generates ALL built-in sprite packs: qute (ghost), blob, bot, cat.
+"""Generates ALL built-in sprite packs: qute (ghost), blob, bot, cat + 7 anime girls (sakura aoi midori yuki luna akane hikari).
+The anime girls are single-color "flat" packs (no color variants).
 Dev tool only (needs Pillow), not part of the build:   python3 tools/gen_packs.py [pack ...]
 
 Per pack:  assets/spritepacks/<id>/manifest.json
@@ -359,12 +360,320 @@ def build_cat(state, t):
     props(d, state, t)
     return body, ti, 212
 
+# --- anime girls: chibi characters, ONE fixed color scheme each.
+# They are "flat" packs: no color variants, the sheets sit directly in the pack folder (manifest "variants": []).
+# Style: sticker look (dark outline + thin light halo) so they read on light AND dark backgrounds.
+SKIN, SKIN_SH = (255, 232, 218), (240, 196, 182)
+OUT_INK = (58, 40, 74)
+GOLD = (255, 214, 96)
+
+def dk(c, f=0.6): return (int(c[0] * f), int(c[1] * f), int(c[2] * f), 255)
+def lt(c, f=0.4): return (int(c[0] + (255 - c[0]) * f), int(c[1] + (255 - c[1]) * f), int(c[2] + (255 - c[2]) * f), 255)
+
+def shape(d, pts, fill, edge=None, w=1.8):
+    poly(d, pts, fill)
+    if edge: line(d, list(pts) + [pts[0]], edge, w)
+
+def blob(d, cx, cy, rx, ry, fill, edge=None, w=1.8):
+    ell(d, cx, cy, rx, ry, fill)
+    if edge: d.ellipse([sc(cx - rx), sc(cy - ry), sc(cx + rx), sc(cy + ry)], outline=edge, width=max(1, sc(w)))
+
+def rr(d, x0, y0, x1, y1, r, fill, edge=None, w=1.6):
+    kw = {"outline": edge, "width": max(1, sc(w))} if edge else {}
+    d.rounded_rectangle([sc(x0), sc(y0), sc(x1), sc(y1)], radius=sc(r), fill=fill, **kw)
+
+def bez(p0, p1, p2, n=18):
+    pts = []
+    for i in range(n + 1):
+        s = i / n
+        pts.append(((1 - s) ** 2 * p0[0] + 2 * (1 - s) * s * p1[0] + s * s * p2[0],
+                    (1 - s) ** 2 * p0[1] + 2 * (1 - s) * s * p1[1] + s * s * p2[1]))
+    return pts
+
+def wavy(p0, p1, amp, k, n=28):
+    return [(p0[0] + (p1[0] - p0[0]) * (i / n) + amp * math.sin(2 * math.pi * k * i / n) * (i / n),
+             p0[1] + (p1[1] - p0[1]) * (i / n)) for i in range(n + 1)]
+
+def strand(d, path, w0, w1, fill, edge=None):
+    """Tapered ribbon along a path (hair tails, sleeves)."""
+    L, R, n = [], [], len(path)
+    for i, (x, y) in enumerate(path):
+        xa, ya = path[max(i - 1, 0)]; xb, yb = path[min(i + 1, n - 1)]
+        tx, ty = xb - xa, yb - ya
+        ln = math.hypot(tx, ty) or 1.0
+        nx, ny = -ty / ln, tx / ln
+        hw = (w0 + (w1 - w0) * i / (n - 1)) / 2
+        L.append((x + nx * hw, y + ny * hw)); R.append((x - nx * hw, y - ny * hw))
+    shape(d, L + R[::-1], fill, edge)
+    blob(d, path[-1][0], path[-1][1], w1 / 2, w1 / 2, fill, edge)
+
+def bow(d, cx, cy, s, fill, edge, knot):
+    for k in (-1, 1):
+        shape(d, [(cx, cy), (cx + k * 18 * s, cy - 11 * s), (cx + k * 20 * s, cy + 11 * s)], fill, edge, 1.5)
+    blob(d, cx, cy, 5 * s, 5 * s, knot, edge, 1.3)
+
+def grow(a, r):
+    return a.filter(ImageFilter.GaussianBlur(max(1.0, r / 2.0))).point(lambda v: 255 if v > 6 else 0)
+
+def stickerize(img):
+    a = img.getchannel("A")
+    out = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    for ring, col, al in ((grow(a, sc(4.2)), (255, 255, 255), 190), (grow(a, sc(2.4)), OUT_INK, 255)):
+        lay = Image.new("RGBA", img.size, col + (0,))
+        lay.putalpha(ring.point(lambda v, al=al: al if v > 100 else 0))
+        out = Image.alpha_composite(out, lay)
+    return Image.alpha_composite(out, img)
+
+# ---- face
+def girl_eye(d, kind, x, y, side, iris, look=(0, 0)):
+    lx, ly = look
+    ird, irl = dk(iris, 0.55), lt(iris, 0.4)
+    if kind in ("open", "wide"):
+        big = kind == "wide"
+        rx, ry = (12.5, 16.5) if big else (11.5, 15)
+        ell(d, x, y, rx, ry, ird)
+        ell(d, x, y + 2.5, rx - 2, ry - 4, iris)
+        ell(d, x, y + 6.5, rx - 4.5, ry - 9.5, irl)
+        ell(d, x + lx * 0.6, y + ly * 0.6 + 1, 3.6 if big else 4.4, 5 if big else 6.6, INK)
+        ell(d, x - 4 + lx * 0.4, y - 6 + ly * 0.4, 4, 4, WHITE)
+        ell(d, x + 4.5, y + 7, 2, 2, WHITE)
+        arc(d, x, y + 1, rx + 0.5, ry + 0.5, 200, 340, INK, 3.6)
+        line(d, [(x + side * (rx - 1), y - ry * 0.5), (x + side * (rx + 5), y - ry * 0.8)], INK, 2.6)
+    elif kind == "blink" or kind == "sleep":
+        arc(d, x, y + 3, 10, 6, 20, 160, INK, 3.2)
+        line(d, [(x + side * 9, y + 7), (x + side * 14, y + 10)], INK, 2.4)
+    elif kind == "happy":
+        arc(d, x, y + 4, 11, 10, 200, 340, INK, 3.8)
+    elif kind == "x":
+        line(d, [(x - 8, y - 8), (x + 8, y + 8)], INK, 3.6)
+        line(d, [(x - 8, y + 8), (x + 8, y - 8)], INK, 3.6)
+    elif kind == "focus":                                       # half-lidded, determined
+        d.pieslice([sc(x - 11.5), sc(y - 9), sc(x + 11.5), sc(y + 13)], 0, 180, fill=ird)
+        d.pieslice([sc(x - 9.5), sc(y - 6), sc(x + 9.5), sc(y + 12.5)], 0, 180, fill=iris)
+        ell(d, x, y + 4, 3.8, 4.8, INK)
+        ell(d, x - 3.5, y + 2, 2.6, 2.6, WHITE)
+        line(d, [(x - 12.5, y + 2), (x + 12.5, y + 2)], INK, 3.6)
+        line(d, [(x + side * 11, y + 1), (x + side * 16, y - 3)], INK, 2.4)
+
+def girl_mouth(d, kind, x, y):
+    if kind == "smile":
+        arc(d, x, y - 2, 6, 5, 20, 160, INK, 2.4)
+    elif kind == "o":
+        ell(d, x, y + 1, 3.4, 4, INK)
+    elif kind == "open":
+        d.pieslice([sc(x - 8), sc(y - 4), sc(x + 8), sc(y + 11)], 0, 180, fill=INK)
+        d.pieslice([sc(x - 4.5), sc(y + 3), sc(x + 4.5), sc(y + 11)], 0, 180, fill=(255, 120, 140, 255))
+    elif kind == "flat":
+        line(d, [(x - 5, y), (x + 5, y)], INK, 2.4)
+    elif kind == "wavy":
+        line(d, [(x - 8 + i, y + 2 * math.sin(i * 0.9)) for i in range(0, 17, 2)], INK, 2.4)
+    else:
+        ell(d, x, y, 2.4, 1.8, INK)
+
+# ---- hair
+FRINGES = {
+    "default": [(180, 128), (170, 108), (160, 99), (150, 101), (140, 99), (134, 101), (128, 112), (122, 101), (116, 99),
+                (106, 101), (96, 99), (86, 108), (76, 128)],
+    "hime":    [(180, 142), (175, 100), (160, 100), (96, 100), (81, 100), (76, 142)],
+    "swept":   [(180, 130), (172, 106), (160, 96), (148, 104), (136, 94), (120, 100), (104, 98), (92, 106), (84, 102), (76, 130)],
+}
+
+def back_hair(d, style, hair, hd, sw):
+    blob(d, 128, 106, 56, 52, hair, hd, 1.8)
+    if style == "twintail":
+        for s in (-1, 1):
+            strand(d, bez((128 + s * 44, 90), (128 + s * 92, 140), (128 + s * 78 + sw * 0.8, 206)), 28, 8, hair, hd)
+    elif style == "bob":
+        rr(d, 70, 62, 186, 150, 34, hair, hd, 1.8)
+    elif style == "ponytail":
+        strand(d, bez((100, 70), (26, 50), (46 + sw, 166)), 24, 8, hair, hd)
+    elif style == "long":
+        rr(d, 90, 100, 166, 206, 18, hair, hd, 1.8)
+        for s in (-1, 1):
+            strand(d, bez((128 + s * 42, 96), (128 + s * 68, 150), (128 + s * 52 + sw * 0.5, 208)), 30, 20, hair, hd)
+    elif style == "waves":
+        for s in (-1, 1):
+            strand(d, bez((128 + s * 42, 98), (128 + s * 72, 138), (128 + s * 58 + sw * 0.5, 178)), 28, 12, hair, hd)
+    elif style == "buns":
+        for s in (-1, 1):
+            strand(d, bez((128 + s * 44, 86), (128 + s * 68, 112), (128 + s * 58 + sw * 0.5, 144)), 14, 6, hair, hd)
+            blob(d, 128 + s * 40, 68, 18, 18, hair, hd, 1.8)
+            ell(d, 128 + s * 40 - 5, 62, 7, 4.5, lt(hair, 0.55))
+    elif style == "drills":
+        for s in (-1, 1):
+            strand(d, wavy((128 + s * 44, 94), (128 + s * 78 + sw * 0.5, 204), 11, 2.4), 25, 9, hair, hd)
+
+def front_hair(d, g, hair, hd, hl):
+    top = [(128 + 54 * math.cos(math.radians(a)), 104 + 52 * math.sin(math.radians(a))) for a in range(180, 361, 6)]
+    shape(d, top + FRINGES[g.get("fringe", "default")], hair, hd, 1.8)
+    arc(d, 128, 98, 38, 32, 205, 295, hl, 4.5)
+
+# ---- outfit (legs, skirt, torso) and arms
+SKIRTS = {"hoodie": [(106, 184), (150, 184), (154, 206), (102, 206)], "qipao": [(104, 184), (152, 184), (162, 208), (94, 208)],
+          "robe": [(102, 184), (154, 184), (172, 210), (84, 210)]}
+
+def draw_outfit(d, g, C):
+    top, trim, skirt, sock, shoe = C(g["top"]), C(g["trim"]), C(g["skirt"]), C(g["sock"]), C(g["shoe"])
+    kind = g["outfit"]
+    for x in (118, 138):
+        rr(d, x - 6, 202, x + 6, 223, 4, sock, dk(sock, 0.7), 1.4)
+        if g.get("sock2"):
+            for y in (208, 216):
+                d.rectangle([sc(x - 5), sc(y), sc(x + 5), sc(y + 3)], fill=C(g["sock2"]))
+    for x in (115, 141):
+        blob(d, x, 224, 10, 5.5, shoe, dk(shoe, 0.7), 1.4)
+    if kind == "hoodie":
+        blob(d, 128, 152, 27, 11, dk(top, 0.8), dk(top, 0.5), 1.4)
+    if kind in ("magical", "ojou", "dress"):                    # lace frill under the skirt
+        fc = lt(skirt, 0.75)
+        for x in range(88, 170, 11):
+            blob(d, x, 210, 7, 6, fc, dk(fc, 0.75), 1.2)
+    shape(d, SKIRTS.get(kind, [(102, 184), (154, 184), (170, 208), (86, 208)]), skirt, dk(skirt, 0.65), 1.6)
+    shape(d, [(106, 150), (150, 150), (155, 190), (101, 190)], top, dk(top, 0.65), 1.6)
+    red = (236, 70, 90)
+    if kind == "sailor":
+        shape(d, [(104, 150), (152, 150), (128, 182)], trim, dk(trim, 0.7), 1.4)
+        shape(d, [(115, 150), (141, 150), (128, 171)], top)
+        bow(d, 128, 175, 0.75, C(red), dk(red, 0.7), C(red))
+        for x in (108, 118, 128, 138, 148):
+            line(d, [(x, 190), (128 + (x - 128) * 1.25, 207)], dk(skirt, 0.8), 1.6)
+    elif kind == "magical":
+        shape(d, [(108, 150), (148, 150), (140, 163), (116, 163)], C((255, 255, 255)), dk(top, 0.65), 1.3)
+        bow(d, 128, 168, 1.05, C((255, 104, 156)), dk((255, 104, 156), 0.65), C(GOLD))
+        rr(d, 102, 182, 154, 189, 3, C((255, 255, 255)), dk(top, 0.65), 1.2)
+    elif kind == "hoodie":
+        line(d, [(128, 156), (128, 190)], trim, 2.2)
+        line(d, [(120, 156), (118, 176)], trim, 2); line(d, [(136, 156), (138, 176)], trim, 2)
+        line(d, [(102, 204), (154, 204)], trim, 2)
+    elif kind == "dress":
+        bow(d, 128, 162, 0.6, trim, dk(trim, 0.65), lt(trim, 0.5))
+        rr(d, 102, 180, 154, 188, 3, trim, dk(trim, 0.65), 1.2)
+    elif kind == "robe":
+        shape(d, [(112, 150), (144, 150), (136, 161), (120, 161)], C((255, 255, 255)), dk(top, 0.6), 1.2)
+        star(d, 128, 174, 8, trim)
+        rr(d, 102, 183, 154, 189, 3, trim, dk(trim, 0.6), 1.2)
+        for (x, y) in ((100, 198), (156, 198), (128, 202)): star(d, x, y, 4, trim)
+    elif kind == "qipao":
+        rr(d, 116, 146, 140, 157, 4, trim, dk(trim, 0.6), 1.2)
+        for (x, y) in ((136, 162), (134, 171), (131, 180)): blob(d, x, y, 2.6, 2.6, trim, dk(trim, 0.6), 1)
+        line(d, [(104, 188), (101, 190)], trim, 2); line(d, [(94, 207), (162, 207)], trim, 3)
+    elif kind == "ojou":
+        bow(d, 128, 162, 1.1, C((255, 150, 190)), dk((255, 150, 190), 0.65), C((255, 226, 120)))
+        rr(d, 102, 181, 154, 189, 3, trim, dk(trim, 0.65), 1.2)
+
+def draw_arms(d, g, C, state, t, ph):
+    top, skin = C(g["top"]), C(SKIN)
+    hL, hR, bend = {
+        "idle":     ((96, 188 + 2 * math.sin(ph)), (160, 188 - 2 * math.sin(ph)), 8),
+        "thinking": ((100, 186), (140, 153), 8),
+        "working":  ((116, 184 + 4 * math.sin(2 * ph)), (140, 184 - 4 * math.sin(2 * ph)), 8),
+        "waiting":  ((98, 188), (186, 126 + 8 * math.sin(2 * ph)), 14),
+        "done":     ((80, 118 - 4 * math.sin(ph)), (176, 118 - 4 * math.sin(ph)), 20),
+        "error":    ((84, 104), (172, 104), 22),
+        "offline":  ((112, 188), (144, 188), 4),
+    }[state]
+    for s, sh, hand in ((-1, (106, 160), hL), (1, (150, 160), hR)):
+        mid = ((sh[0] + hand[0]) / 2 + s * bend, (sh[1] + hand[1]) / 2 + 6)
+        strand(d, bez(sh, mid, hand), 12, 10, top, dk(top, 0.65))
+        blob(d, hand[0], hand[1], 6.5, 6.5, skin, dk(skin, 0.8), 1.4)
+
+def draw_acc(d, g, C):
+    a, trim = g["acc"], C(g["trim"])
+    if a == "bows":
+        for s in (-1, 1): bow(d, 128 + s * 46, 88, 0.9, C((255, 92, 150)), dk((255, 92, 150), 0.65), C((255, 222, 232)))
+        star(d, 152, 86, 9, C(GOLD))
+    elif a == "clip":
+        for y in (90, 99): rr(d, 148, y, 172, y + 5, 2, C((250, 250, 255)), dk((120, 140, 190), 0.8), 1)
+    elif a == "headphones":
+        dark = C((40, 46, 66))
+        arc(d, 128, 102, 57, 54, 196, 344, dark, 7)
+        for x0 in (68, 172):
+            rr(d, x0, 98, x0 + 16, 130, 6, dark, dk(dark, 0.5), 1.2)
+            rr(d, x0 + 4, 104, x0 + 12, 124, 3, trim)
+        blob(d, 98, 72, 6, 6, trim, dk(trim, 0.6), 1.2)                     # ponytail tie
+    elif a == "snow":
+        for ang in (0, 60, 120):
+            r = 9
+            line(d, [(156 - r * math.cos(math.radians(ang)), 88 - r * math.sin(math.radians(ang))),
+                     (156 + r * math.cos(math.radians(ang)), 88 + r * math.sin(math.radians(ang)))], C((130, 185, 250)), 2.6)
+        blob(d, 156, 88, 2.8, 2.8, C((255, 255, 255)), C((130, 185, 250)), 1)
+    elif a == "witch":
+        hat = dk(C(g["top"]), 0.9)
+        blob(d, 128, 78, 68, 14, hat, dk(hat, 0.55), 1.6)
+        left, right = bez((96, 78), (112, 38), (174, 22)), bez((160, 78), (158, 46), (174, 22))
+        shape(d, left + right[::-1], hat, dk(hat, 0.55), 1.6)
+        rr(d, 98, 64, 158, 75, 3, trim, dk(trim, 0.6), 1.2)
+        star(d, 128, 52, 8, trim)
+    elif a == "rings":
+        for s in (-1, 1):
+            blob(d, 128 + s * 40, 86, 10, 4.5, C(GOLD), dk(GOLD, 0.6), 1.2)
+            blob(d, 128 + s * 40, 70, 3.5, 3.5, C((255, 240, 160)), dk(GOLD, 0.6), 1)
+    elif a == "tiara":
+        shape(d, [(106, 66), (111, 46), (120, 58), (128, 38), (136, 58), (145, 46), (150, 66)], C(GOLD), dk(GOLD, 0.6), 1.5)
+        blob(d, 128, 57, 3.6, 3.6, C((255, 120, 170)), dk((255, 120, 170), 0.6), 1)
+
+GIRLS = {
+    "sakura": dict(name="Sakura", desc="Pink twin-tail magical girl.", hair=(255, 152, 196), iris=(255, 92, 150),
+                   style="twintail", outfit="magical", top=(255, 178, 208), trim=(255, 255, 255), skirt=(255, 140, 184),
+                   sock=(255, 255, 255), shoe=(255, 120, 170), acc="bows"),
+    "aoi":    dict(name="Aoi", desc="Calm blue bob-cut girl in a sailor uniform.", hair=(92, 158, 255), iris=(54, 118, 235),
+                   style="bob", fringe="swept", outfit="sailor", top=(244, 247, 255), trim=(52, 76, 140), skirt=(60, 92, 170),
+                   sock=(52, 76, 140), shoe=(110, 72, 60), acc="clip"),
+    "midori": dict(name="Midori", desc="Green ponytail gamer girl with headphones.", hair=(92, 205, 130), iris=(36, 160, 120),
+                   style="ponytail", outfit="hoodie", top=(74, 88, 118), trim=(120, 255, 170), skirt=(52, 60, 84),
+                   sock=(52, 60, 84), shoe=(240, 240, 250), acc="headphones"),
+    "yuki":   dict(name="Yuki", desc="Silver-haired, cool and quiet.", hair=(236, 242, 255), iris=(110, 195, 255),
+                   style="long", fringe="hime", outfit="dress", top=(214, 228, 255), trim=(120, 170, 240), skirt=(196, 214, 250),
+                   sock=(255, 255, 255), shoe=(120, 170, 240), acc="snow"),
+    "luna":   dict(name="Luna", desc="Violet-haired little witch.", hair=(160, 118, 240), iris=(255, 200, 80),
+                   style="waves", outfit="robe", top=(92, 66, 150), trim=GOLD, skirt=(78, 56, 134),
+                   sock=(255, 255, 255), sock2=(140, 110, 210), shoe=(48, 36, 80), acc="witch"),
+    "akane":  dict(name="Akane", desc="Fiery red-orange twin-bun girl.", hair=(255, 118, 58), iris=(255, 190, 50),
+                   style="buns", outfit="qipao", top=(224, 58, 64), trim=GOLD, skirt=(200, 44, 56),
+                   sock=(60, 44, 60), shoe=(224, 58, 64), acc="rings"),
+    "hikari": dict(name="Hikari", desc="Blonde twin-drill rich girl with a tiara.", hair=(255, 224, 110), iris=(110, 150, 255),
+                   style="drills", outfit="ojou", top=(255, 238, 245), trim=(255, 150, 190), skirt=(255, 214, 232),
+                   sock=(255, 255, 255), shoe=(255, 150, 190), acc="tiara"),
+}
+
+def build_girl(g):
+    def build(state, t):
+        ph = 2 * math.pi * t / FR
+        off = state == "offline"
+        C = (lambda c: tuple(dim(c)) + (255,)) if off else (lambda c: (c[0], c[1], c[2], 255))
+        hair = C(g["hair"]); hd = dk(hair, 0.66); hl = lt(hair, 0.5)
+        skin = C(SKIN)
+        sway = {"idle": 3 * math.sin(ph), "thinking": 2 * math.sin(ph), "working": 2.5 * math.sin(2 * ph), "waiting": 6 * math.sin(ph),
+                "done": 7 * math.sin(ph), "error": [-4, 4, -3, 3, -2, 2][t], "offline": 1.5 * math.sin(ph)}[state]
+        body, d = layer()
+        back_hair(d, g["style"], hair, hd, sway)
+        draw_outfit(d, g, C)
+        blob(d, 128, 104, 49, 45, skin, dk(skin, 0.8), 1.6)             # head
+        front_hair(d, g, hair, hd, hl)
+        draw_acc(d, g, C)
+        draw_arms(d, g, C, state, t, ph)
+        body = stickerize(body)
+
+        ti, dt = layer()
+        kind = eye_kind(state, t)
+        look = (3, -4) if state == "thinking" else (0, 0)
+        for s in (-1, 1):
+            girl_eye(dt, kind, 128 + s * 22, 119, s, g["iris"], look)
+            ell(dt, 128 + s * 33, 135, 7, 4, (255, 130, 150, 70 if off else 125))          # blush
+        girl_mouth(dt, mouth_kind(state), 128, 140 if state != "thinking" else 142)
+        props(dt, state, t)
+        return body, ti, 226
+    return build
+
 CHARACTERS = {
     "qute": {"name": "Qute Agent", "build": build_qute, "desc": "The classic little ghost."},
     "blob": {"name": "Blob", "build": build_blob, "desc": "A squishy slime that bounces with the mood."},
     "bot":  {"name": "Bot", "build": build_bot, "desc": "A tiny robot with a screen face and an antenna light."},
     "cat":  {"name": "Cat", "build": build_cat, "desc": "A round cat that raises a paw when it needs you."},
 }
+
+for _id, _g in GIRLS.items():          # anime girls: flat single-color packs (variants=None)
+    CHARACTERS[_id] = {"name": _g["name"], "build": build_girl(_g), "desc": _g["desc"], "variants": None}
 
 # ---------------------------------------------------------------- compose + save
 def hue_shift(img, deg):
@@ -378,14 +687,16 @@ def hue_shift(img, deg):
 
 def render_pack(pid):
     spec = CHARACTERS[pid]
-    sheets = {v: {} for v in VARIANTS}
+    flat = "variants" in spec and spec["variants"] is None      # single-color pack: files directly in the pack folder
+    vmap = {"": 0} if flat else VARIANTS
+    sheets = {v: {} for v in vmap}
     for state in STATES:
-        frames = {v: [] for v in VARIANTS}
+        frames = {v: [] for v in vmap}
         for t in range(FR):
             body, top, ground = spec["build"](state, t)
             body_s, top_s = body.resize((W, W), Image.LANCZOS), top.resize((W, W), Image.LANCZOS)
             dx, dy = motion(state, t)
-            for v, deg in VARIANTS.items():
+            for v, deg in vmap.items():
                 canvas = Image.new("RGBA", (W, W), (0, 0, 0, 0))
                 if ground is not None:                                    # ground shadow (does not bob)
                     sh = Image.new("RGBA", (W, W), (0, 0, 0, 0))
@@ -397,27 +708,29 @@ def render_pack(pid):
                 moved.paste(fr, (dx, dy))                                  # raw copy: shifts without touching alpha
                 canvas = Image.alpha_composite(canvas, moved)
                 frames[v].append(canvas)
-        for v in VARIANTS:
+        for v in vmap:
             sheet = Image.new("RGBA", (W * FR, W), (0, 0, 0, 0))
             for t, f in enumerate(frames[v]):
                 sheet.paste(f, (t * W, 0))
             sheets[v][state] = sheet
     out = os.path.join(ROOT, pid)
-    for v in VARIANTS:
-        os.makedirs(os.path.join(out, v), exist_ok=True)
+    for v in vmap:
+        vdir = os.path.join(out, v) if v else out
+        os.makedirs(vdir, exist_ok=True)
         for state, sheet in sheets[v].items():
-            sheet.save(os.path.join(out, v, f"{state}.png"), optimize=True)
+            sheet.save(os.path.join(vdir, f"{state}.png"), optimize=True)
+    tmpl = "%s.png" if flat else "{variant}/%s.png"
     manifest = {
         "id": pid, "name": spec["name"], "description": spec["desc"], "author": "Qute Agent project", "license": "CC0-1.0",
-        "version": 2, "frame": {"width": W, "height": W}, "variants": list(VARIANTS),
-        "states": {s: {"file": "{variant}/%s.png" % s, "frames": FR, "fps": FPS[s]} for s in STATES},
+        "version": 2, "frame": {"width": W, "height": W}, "variants": [] if flat else list(VARIANTS),
+        "states": {s: {"file": tmpl % s, "frames": FR, "fps": FPS[s]} for s in STATES},
         "fallback": {"working": "thinking", "waiting": "thinking", "error": "idle", "offline": "idle", "done": "idle"},
     }
     with open(os.path.join(out, "manifest.json"), "w") as f:
         json.dump(manifest, f, indent=2); f.write("\n")
     # contact sheet: rows = variants, columns = states (first frame)
-    prev = Image.new("RGBA", (W * len(STATES), W * len(VARIANTS)), (24, 26, 40, 255))
-    for r, v in enumerate(VARIANTS):
+    prev = Image.new("RGBA", (W * len(STATES), W * len(vmap)), (24, 26, 40, 255))
+    for r, v in enumerate(vmap):
         for c, s in enumerate(STATES):
             prev.alpha_composite(sheets[v][s].crop((0, 0, W, W)), (c * W, r * W))
     prev.convert("RGB").resize((prev.width // 2, prev.height // 2), Image.LANCZOS).save(os.path.join(out, "preview.png"), optimize=True)

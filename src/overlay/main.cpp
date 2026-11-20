@@ -120,8 +120,12 @@ int main(int argc, char *argv[])
         QQuickStyle::setStyle(style == QLatin1String("custom") ? QStringLiteral("Basic") : style);
     Theme theme(&config);                                // overlay colors, resolved from config + system palette
     SpritePackManager packs;
+    packs.setFpsOverrides(config.spriteFps());
     packs.load(config.packId(), config.variant());
-    QObject::connect(&config, &AppConfig::changed, &packs, [&] { packs.load(config.packId(), config.variant()); });
+    QObject::connect(&config, &AppConfig::changed, &packs, [&] {
+        packs.setFpsOverrides(config.spriteFps());
+        packs.load(config.packId(), config.variant());
+    });
 
     OpenCodeClient client(&config);
     OpenCodeCatalog catalog(&client);
